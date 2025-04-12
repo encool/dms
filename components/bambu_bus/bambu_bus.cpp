@@ -178,9 +178,9 @@ void BambuBus::package_send_with_crc(uint8_t *data, int data_length) {
     send_uart(data, data_length);
     
     if (need_debug) {
-        ESP_LOGD("BambuBus", "Sent package:");
+        // ESP_LOGD("BambuBus", "Sent package:");
         for (int i = 0; i < data_length; i++) {
-            ESP_LOGD("BambuBus", "%02X ", data[i]);
+            // ESP_LOGD("BambuBus", "%02X ", data[i]);
         }
         need_debug = false;
     }
