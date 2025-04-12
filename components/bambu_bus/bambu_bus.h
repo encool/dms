@@ -1,9 +1,9 @@
 #pragma once
 
+#include "esphome/core/log.h"
 #include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/uart/uart_component.h"
-#include "esphome/core/log.h"
 
 #include "crc.h"
 
