@@ -53,7 +53,7 @@ class BambuBus : public esphome::Component, public esphome::uart::UARTDevice {
 protected:
     esphome::ESPPreferenceObject pref_;
 public:
-    BambuBus(esphome::uart::UARTComponent *parent) : UARTDevice(parent) {}
+    BambuBus() : UARTDevice() {}
 
     void setup() override;
     void loop() override;
