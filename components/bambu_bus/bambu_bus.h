@@ -3,6 +3,7 @@
 #include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/uart/uart_component.h"
+#include "esphome/core/log.h"
 
 #include "crc.h"
 
@@ -47,7 +48,7 @@ struct flash_save_struct {
 };
 
 class BambuBus : public esphome::Component, public esphome::uart::UARTDevice {
-        // 添加这个声明
+// 添加这个声明
 protected:
     esphome::ESPPreferenceObject pref_;
 public:
@@ -66,6 +67,7 @@ public:
     bool get_filament_online(int num);
     void set_filament_motion(int num, _filament_motion_state_set motion);
     _filament_motion_state_set get_filament_motion(int num);
+    static constexpr const char *TAG = "BambuBus";  // 必须这样定义
 
 private:
     void BambuBUS_UART_Init();
