@@ -7,6 +7,7 @@
 
 #include "crc.h"
 
+
 enum _filament_status { offline, online, NFC_waiting };
 enum _filament_motion_state_set { idle, need_send_out, on_use, need_pull_back };
 enum package_type {
@@ -46,7 +47,7 @@ struct flash_save_struct {
     uint32_t version = 1; // Bambubus_version
     uint32_t check = 0x40614061;
 };
-
+namespace bambu_bus {
 class BambuBus : public esphome::Component, public esphome::uart::UARTDevice {
 // 添加这个声明
 protected:
@@ -256,3 +257,4 @@ private:
     uint8_t long_packge_version_version_and_name_AMS08[21] = {0x00, 0x00, 0x00, 0x00,
                                                               0x41, 0x4D, 0x53, 0x30, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 };
+}

@@ -1,7 +1,7 @@
 #include "bambu_bus.h"
 #include "esphome/core/preferences.h"
 #include "esphome/core/log.h"
-
+namespace bambu_bus {
 
 void BambuBus::setup() {
     // ESP_LOGI(BambuBus::TAG, "Setup started");
@@ -210,5 +210,6 @@ package_type BambuBus::get_packge_type(uint8_t *buf, int length) {
     return BambuBus_package_NONE;
 }
 
+}
 // Implement all the remaining methods following the same pattern...
 // [Rest of the implementation would follow the same structure as above]
