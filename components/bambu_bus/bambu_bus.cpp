@@ -4,7 +4,7 @@
 
 
 void BambuBus::setup() {
-    ESP_LOGI(BambuBus::TAG, "Setup started");
+    // ESP_LOGI(BambuBus::TAG, "Setup started");
     // 确保全局偏好已初始化
     if (!esphome::global_preferences) {
         esphome::global_preferences = esphome::global_preferences;
