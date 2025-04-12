@@ -1,5 +1,6 @@
 #include "bambu_bus.h"
 #include "esphome/core/preferences.h"
+#include "esphome/core/log.h"
 
 
 void BambuBus::setup() {
