@@ -5,8 +5,8 @@ from esphome.const import CONF_ID
 
 DEPENDENCIES = ['uart']
 
-empty_uart_component_ns = cg.esphome_ns.namespace('bambu_bus')
-EmptyUARTComponent = empty_uart_component_ns.class_('bambu_bus', cg.Component, uart.UARTDevice)
+empty_uart_component_ns = cg.esphome_ns.namespace('BambuBus')
+EmptyUARTComponent = empty_uart_component_ns.class_('BambuBus', cg.Component, uart.UARTDevice)
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(EmptyUARTComponent)
