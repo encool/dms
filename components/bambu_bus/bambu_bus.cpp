@@ -14,6 +14,8 @@ void BambuBus::setup() {
 }
 
 void BambuBus::loop() {
+    ESP_LOGI(BambuBus::TAG, "loop started");
+
     static uint8_t buf[1000];
     static size_t pos = 0;
     
