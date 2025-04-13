@@ -18,7 +18,8 @@ void BambuBus::setup() {
 void BambuBus::loop() {
     static uint8_t buf[1000];
     static size_t pos = 0;
-    
+    ESP_LOGI(BambuBus::TAG, "data available ttt");
+
     // Read incoming data
     while (available()) {
         ESP_LOGI(BambuBus::TAG, "data available");
