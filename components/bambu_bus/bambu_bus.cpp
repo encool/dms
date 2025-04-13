@@ -26,7 +26,7 @@ void BambuBus::loop() {
     }
     
     // Process received data
-    // BambuBus_run();
+    BambuBus_run();
 }
 
 void BambuBus::BambuBUS_UART_Init() {

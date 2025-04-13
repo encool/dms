@@ -105,7 +105,7 @@ private:
     uint8_t AMS_num = 1;
     bool Bambubus_need_to_save = false;
     uint8_t package_num = 0;
-    bool need_debug = false;
+    bool need_debug = true;
     bool need_res_for_06 = false;
     uint8_t res_for_06_num = 0xFF;
     int last_detect = 0;
