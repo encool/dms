@@ -8,7 +8,7 @@ bool setup_done = false;
 
 void BambuBus::setup() {
     ESP_LOGCONFIG(BambuBus::TAG, "Setup started11");
-    setup_done = true;
+    // setup_done = true;
     // 添加短暂延迟确保日志系统就绪
     esphome::delay(500); 
     ESP_LOGCONFIG(BambuBus::TAG, "Setup started");
