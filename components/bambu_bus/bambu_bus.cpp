@@ -4,13 +4,8 @@
 #include "esphome/core/hal.h" 
 namespace bambu_bus {
 
-bool setup_done = false;
 
 void BambuBus::setup() {
-    ESP_LOGCONFIG(BambuBus::TAG, "Setup started11");
-    // setup_done = true;
-    // 添加短暂延迟确保日志系统就绪
-    esphome::delay(500); 
     ESP_LOGCONFIG(BambuBus::TAG, "Setup started");
     // 确保全局偏好已初始化
     if (!esphome::global_preferences) {
@@ -20,11 +15,6 @@ void BambuBus::setup() {
 }
 
 void BambuBus::loop() {
-    if (setup_done) {
-        ESP_LOGI(TAG, "Setup completed successfully");
-    } else {
-        ESP_LOGI(TAG, "Setup not completed yet");
-    }
     static uint8_t buf[1000];
     static size_t pos = 0;
 
