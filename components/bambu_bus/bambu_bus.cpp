@@ -1,10 +1,12 @@
 #include "esphome/core/log.h"
 #include "bambu_bus.h"
 #include "esphome/core/preferences.h"
-
+#include "esphome/core/hal.h" 
 namespace bambu_bus {
 
 void BambuBus::setup() {
+    // 添加短暂延迟确保日志系统就绪
+    esphome::delay(100); 
     ESP_LOGI(BambuBus::TAG, "Setup started");
     // 确保全局偏好已初始化
     if (!esphome::global_preferences) {
