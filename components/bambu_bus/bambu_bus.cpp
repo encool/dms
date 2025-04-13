@@ -6,7 +6,7 @@ namespace bambu_bus {
 
 void BambuBus::setup() {
     // 添加短暂延迟确保日志系统就绪
-    esphome::delay(1000); 
+    esphome::delay(5000); 
     ESP_LOGI(BambuBus::TAG, "Setup started");
     // 确保全局偏好已初始化
     if (!esphome::global_preferences) {
