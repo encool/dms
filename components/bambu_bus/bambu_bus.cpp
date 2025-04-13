@@ -1,3 +1,4 @@
+#include "esphome/core/log.h"
 #include "bambu_bus.h"
 #include "esphome/core/preferences.h"
 
