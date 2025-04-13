@@ -14,13 +14,13 @@ void BambuBus::setup() {
 }
 
 void BambuBus::loop() {
-    ESP_LOGI(BambuBus::TAG, "loop started");
-
     static uint8_t buf[1000];
     static size_t pos = 0;
     
     // Read incoming data
     while (available()) {
+        ESP_LOGI(BambuBus::TAG, "data available");
+
         uint8_t c;
         if (read_byte(&c)) {
             RX_IRQ(c);
@@ -36,6 +36,7 @@ void BambuBus::BambuBUS_UART_Init() {
 }
 
 void BambuBus::BambuBus_init() {
+    ESP_LOGI(BambuBus::TAG, "Setup started BambuBus_init");
     bool _init_ready = Bambubus_read();
     
     if (!_init_ready) {
