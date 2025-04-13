@@ -26,7 +26,7 @@ void BambuBus::loop() {
     }
     
     // Process received data
-    BambuBus_run();
+    // BambuBus_run();
 }
 
 void BambuBus::BambuBUS_UART_Init() {
@@ -95,7 +95,7 @@ void BambuBus::RX_IRQ(uint8_t data) {
     static uint8_t data_CRC8_index;
     
     // 打印每次进入函数时的基本信息
-    ESP_LOGVV(TAG, "RX_IRQ: data=0x%02X, _index=%d, length=%d", data, _index, length);
+    ESP_LOGI(TAG, "RX_IRQ: data=0x%02X, _index=%d, length=%d", data, _index, length);
 
     if (_index == 0) {
         if (data == 0x3D) {
@@ -149,7 +149,7 @@ void BambuBus::RX_IRQ(uint8_t data) {
         ++_index;
         if (_index >= length) {
             ESP_LOGI(TAG, "Complete frame received (%d bytes)", length);
-            ESP_LOG_BUFFER_HEXDUMP(TAG, BambuBus_data_buf, length, ESP_LOG_DEBUG);
+            // ESP_LOG_BUFFER_HEXDUMP(TAG, BambuBus_data_buf, length, ESP_LOG_DEBUG);
             _index = 0;
             memcpy(buf_X, BambuBus_data_buf, length);
             BambuBus_have_data = length;
