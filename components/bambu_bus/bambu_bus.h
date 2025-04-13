@@ -3,6 +3,8 @@
 #include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/uart/uart_component.h"
+#include "esphome/core/preferences.h"
+
 
 #include "crc.h"
 
