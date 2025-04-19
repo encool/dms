@@ -133,11 +133,6 @@ private:
     int rx_length_ = 500;
     uint8_t rx_data_length_index_ = 0;
     uint8_t rx_data_CRC8_index_ = 0;
-
-    // Need a member to store the parsed long package data if get_packge_type needs it
-    long_packge_data parsed_long_package; // Declare as private member
-
-
     
     // CRC instances
     CRC16 crc_16{0x1021, 0x913D, 0, false, false};
