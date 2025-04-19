@@ -171,7 +171,7 @@ void BambuBus::RX_IRQ(uint8_t data) {
             ESP_LOGD(TAG, "Received Data:\n%s", hexdump.c_str());            
             _index = 0;
             memcpy(buf_X, BambuBus_data_buf, length);
-            BambuBus_have_data = length;
+            this->BambuBus_have_data = length;
         }
 
         if (_index >= 999) {
