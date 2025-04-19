@@ -16,7 +16,7 @@ void BambuBus::setup() {
    if (this->de_pin_ != nullptr) {
         this->de_pin_->setup();
         this->de_pin_->digital_write(false); // 空闲状态：接收 (通常为低电平)
-        ESP_LOGCONFIG(TAG, "DE Pin configured (GPIO%d).", this->de_pin_->get_pin());
+        ESP_LOGCONFIG(TAG, "DE Pin configured (GPIO%d).", this->de_pin_->dump_summary().c_str());
     } else {
         ESP_LOGCONFIG(TAG, "DE Pin not configured.");
     }
