@@ -18,7 +18,7 @@ void BambuBus::setup() {
         // this->de_pin_->setup(); // 可能不需要
         this->de_pin_->digital_write(false); // <<<--- 使用 turn_off() 设置初始状态 (接收)
         // vvv--- 获取引脚号需要通过 get_pin() 方法 ---vvv
-        ESP_LOGCONFIG(TAG, "DE Pin (GPIOBinaryOutput) configured on GPIO%d. Initial state: OFF (Receive)", this->de_pin_->get_pin());
+        ESP_LOGCONFIG(TAG, "DE Pin (GPIOBinaryOutput) configured on GPIO%d. Initial state: OFF (Receive)", this->de_pin_->dump_summary());
         // ^^^--- 注意是 de_pin_->get_pin()->get_pin() ---^^^
     } else {
         ESP_LOGCONFIG(TAG, "DE Pin not configured.");
