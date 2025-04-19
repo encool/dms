@@ -53,6 +53,8 @@ class BambuBus : public esphome::Component, public esphome::uart::UARTDevice {
 // 添加这个声明
 protected:
     esphome::ESPPreferenceObject pref_;
+    esphome::GPIOPin *de_pin_{nullptr}; // <<<--- 添加 DE 引脚成员变量
+
 public:
     BambuBus() : UARTDevice() {}
 
@@ -72,7 +74,6 @@ public:
     void set_filament_motion(int num, _filament_motion_state_set motion);
     _filament_motion_state_set get_filament_motion(int num);
     static constexpr const char *TAG = "BambuBus";  // 必须这样定义
-    esphome::GPIOPin* de_pin_;
 
 private:
     void BambuBUS_UART_Init();

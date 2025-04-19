@@ -252,6 +252,112 @@ void BambuBus::package_send_with_crc(uint8_t *data, int data_length) {
     
 }
 
+// --- 实现所有其他方法 (BambuBus_run, send_for_..., helpers 等) ---
+// ... (将原始代码的逻辑迁移过来，确保使用 this-> 访问成员变量和方法) ...
+// 例如 BambuBus_run:
+package_type BambuBus::BambuBus_run() {
+    package_type stu = BambuBus_package_NONE;
+    // 假设 time_set_ 和 time_motion_ 是 uint32_t 类型的成员变量
+    static uint32_t time_set_ = 0;
+    static uint32_t time_motion_ = 0;
+
+    uint32_t now = esphome::millis(); // 使用 ESPHome 的时间函数
+
+    if (this->BambuBus_have_data > 0) {
+        int data_length = this->BambuBus_have_data;
+        this->BambuBus_have_data = 0; // 清除标志位
+        // need_debug = false; // Reset debug flag if needed
+
+        stu = this->get_packge_type(this->buf_X, data_length);
+        ESP_LOGD(TAG, "Processing package type: %d", (int)stu);
+
+        switch (stu) {
+            case BambuBus_package_heartbeat:
+                time_set_ = now + 1000; // 更新心跳时间戳
+                ESP_LOGD(TAG, "Heartbeat received. Timeout extended.");
+                break;
+            case BambuBus_package_filament_motion_short:
+                this->send_for_Cxx(this->buf_X, data_length);
+                break;
+            case BambuBus_package_filament_motion_long:
+                this->send_for_Dxx(this->buf_X, data_length);
+                time_motion_ = now + 1000; // 更新运动状态时间戳
+                 ESP_LOGD(TAG, "Motion long received. Timeout extended.");
+                break;
+            case BambuBus_package_online_detect:
+                this->send_for_Fxx(this->buf_X, data_length);
+                break;
+            case BambuBus_package_REQx6:
+                 ESP_LOGW(TAG, "REQx6 received, but handler is not fully implemented.");
+                // this->send_for_REQx6(this->buf_X, data_length); // 如果要实现的话
+                break;
+            case BambuBus_long_package_MC_online:
+                 ESP_LOGW(TAG, "Long MC Online received, but handler might need review.");
+                // this->send_for_long_packge_MC_online(this->buf_X, data_length);
+                break;
+            // ... (处理其他 case) ...
+             case BambuBus_longe_package_filament:
+                 ESP_LOGW(TAG, "Long filament info received, but handler might need review.");
+                // this->send_for_long_packge_filament(this->buf_X, data_length);
+                 break;
+             case BambuBus_long_package_version:
+                  ESP_LOGW(TAG, "Long version info received, but handler might need review.");
+                // this->send_for_long_packge_version(this->buf_X, data_length);
+                 break;
+             case BambuBus_package_NFC_detect:
+                  ESP_LOGW(TAG, "NFC detect received, but handler might need review.");
+                 // this->send_for_NFC_detect(this->buf_X, data_length);
+                 break;
+             case BambuBus_package_set_filament:
+                  ESP_LOGI(TAG, "Set filament received.");
+                 this->send_for_Set_filament(this->buf_X, data_length);
+                 break;
+            case BambuBus_package_NONE:
+                 ESP_LOGW(TAG, "Invalid package received (CRC mismatch or unknown type).");
+                 break;
+            default:
+                 ESP_LOGW(TAG, "Received unhandled package type: %d", (int)stu);
+                break;
+        }
+    }
+
+    // 处理超时
+    if (time_set_ != 0 && now > time_set_) { // 检查非零避免首次误判
+        ESP_LOGE(TAG, "Heartbeat timeout! Assuming offline.");
+        stu = BambuBus_package_ERROR; // 标记错误状态
+        time_set_ = 0; // 防止重复触发错误，直到下次心跳
+        // 可能需要在这里执行一些离线处理逻辑
+    }
+    if (time_motion_ != 0 && now > time_motion_) {
+         ESP_LOGD(TAG, "Motion timeout. Setting filaments to idle.");
+         for(int ams = 0; ams < 4; ++ams) {
+             for(int slot = 0; slot < 4; ++slot) {
+                 // Check if this filament was actually in motion before setting to idle
+                 if (data_save.filament[ams][slot].motion_set != idle) {
+                    data_save.filament[ams][slot].motion_set = idle;
+                 }
+             }
+         }
+        time_motion_ = 0; // 防止重复触发
+    }
+
+    // 处理保存
+    if (this->Bambubus_need_to_save) {
+        ESP_LOGI(TAG, "Saving data to preferences...");
+        this->Bambubus_save();
+        this->Bambubus_need_to_save = false;
+         if (stu != BambuBus_package_ERROR) { // 如果没超时，重置超时计时器
+              time_set_ = now + 1000;
+         }
+    }
+
+    // NFC_detect_run(); // 如果需要实现这个逻辑
+
+    return stu;
+}
+
+
+
 package_type BambuBus::get_packge_type(uint8_t *buf, int length) {
     if (!package_check_crc16(buf, length)) {
         return BambuBus_package_NONE;
