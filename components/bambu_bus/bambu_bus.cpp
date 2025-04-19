@@ -41,7 +41,7 @@ void BambuBus::loop() {
     }
     
     // Process received data
-    // BambuBus_run();
+    BambuBus_run();
 }
 
 void BambuBus::BambuBUS_UART_Init() {
@@ -187,24 +187,31 @@ void BambuBus::send_uart(const uint8_t *data, uint16_t length) {
 
 // 用于带 DE 控制发送的新函数
 void BambuBus::send_uart_with_de(const uint8_t *data, uint16_t length) {
+
     if (this->de_pin_ != nullptr) {
         this->de_pin_->digital_write(true); // 激活发送 (高电平)
-        // 根据收发器的需要，可能需要短暂延迟
-        esphome::delayMicroseconds(10); // 示例：10 微秒
+        // 可能需要极短的延迟确保收发器状态切换 (通常非常快)
+        esphome::delayMicroseconds(5); // 示例: 5 微秒，根据硬件调整
+        ESP_LOGV(TAG, "DE pin set HIGH.");
+    } else {
+         ESP_LOGV(TAG, "DE pin not configured, sending without DE control.");
     }
 
-    // 写入数据
-    ESP_LOGD(TAG, "Sending %d bytes with DE control (if enabled)...", length);
+    ESP_LOGD(TAG, "Sending %d bytes...", length);
+    // 使用 format_hex_pretty 打印准备发送的数据
+    if (this->need_debug) { // 或者使用更精细的日志级别控制
+         ESP_LOGD(TAG, "  %s", esphome::format_hex_pretty(data, length).c_str());
+    }
     this->write_array(data, length);
 
     // 等待发送完成 - 非常重要!
     this->flush();
     ESP_LOGV(TAG, "UART flush complete.");
 
-
+    // 在 flush() 之后再禁用 DE
     if (this->de_pin_ != nullptr) {
-         // 在禁用 DE 之前可能需要短暂延迟
-        esphome::delayMicroseconds(10); // 示例：10 微秒
+         // 在禁用 DE 之前可能需要短暂延迟，确保最后一个停止位完全发出
+         esphome::delayMicroseconds(5); // 示例: 5 微秒，根据硬件调整
         this->de_pin_->digital_write(false); // 禁用发送 (低电平)
         ESP_LOGV(TAG, "DE pin set LOW.");
     }
@@ -385,6 +392,71 @@ package_type BambuBus::get_packge_type(uint8_t *buf, int length) {
     return BambuBus_package_NONE;
 }
 
+void BambuBus::send_for_Fxx(uint8_t *buf, int length) {
+    ESP_LOGD(TAG, "Processing Fxx (Online Detect) request. buf[5]=0x%02X", buf[5]);
+
+    // --- 处理子命令 0x00: 请求所有插槽信息 ---
+    if (buf[5] == 0x00) {
+        ESP_LOGD(TAG, "Handling Fxx sub-command 0x00 (request all slots)");
+
+        // 创建一个足够大的缓冲区来容纳 4 个响应包
+        uint8_t F00_res[4 * sizeof(this->F01_res)]; // 大小为 4 * 29 = 116 字节
+
+        // 循环填充每个槽位的响应数据
+        for (int i = 0; i < 4; i++) {
+            // 计算当前响应在 F00_res 中的起始位置
+            uint8_t *current_res_ptr = F00_res + i * sizeof(this->F01_res);
+
+            // 1. 复制基础模板 F01_res 到 F00_res 的对应位置
+            memcpy(current_res_ptr, this->F01_res, sizeof(this->F01_res));
+
+            // 2. 修改复制后的数据 (根据原始代码逻辑)
+            current_res_ptr[5] = 0;   // 字段含义未知，可能是 AMS 索引?
+            current_res_ptr[6] = i;   // 设置槽位索引
+            current_res_ptr[7] = i;   // 再次设置槽位索引? 或状态?
+
+            ESP_LOGV(TAG, "  Prepared response part for slot %d", i);
+        }
+
+        // 3. 发送包含 4 个响应的组合数据包
+        ESP_LOGD(TAG, "Sending combined F00 response (%d bytes)", (int)sizeof(F00_res));
+        this->package_send_with_crc(F00_res, sizeof(F00_res)); // 发送整个 F00_res
+
+    // --- 处理子命令 0x01: 请求特定插槽信息 ---
+    } else if (buf[5] == 0x01) {
+        uint8_t slot_index = buf[6]; // 获取请求的槽位索引
+
+        if (slot_index < 4) { // 检查槽位索引是否有效
+            ESP_LOGD(TAG, "Handling Fxx sub-command 0x01 (request slot %d)", slot_index);
+
+            // !! 重要：创建一个临时缓冲区来修改，不要直接修改 this->F01_res !!
+            uint8_t temp_F01_res[sizeof(this->F01_res)];
+            memcpy(temp_F01_res, this->F01_res, sizeof(this->F01_res));
+
+            // 1. 根据原始代码，将请求 buf 中的 3 个字节 (偏移量4,5,6) 复制到响应的偏移量 4,5,6
+            //    原始代码: memcpy(F01_res + 4, buf + 4, 3);
+            memcpy(temp_F01_res + 4, buf + 4, 3);
+            ESP_LOGV(TAG, "  Copied 3 bytes [0x%02X, 0x%02X, 0x%02X] from request (offset 4) to response template",
+                     buf[4], buf[5], buf[6]);
+
+            // 2. 原始代码中关于 online_detect_num 的部分被注释掉了，所以这里不需要做处理
+
+            // 3. 发送修改后的单个响应包
+            ESP_LOGD(TAG, "Sending single F01 response for slot %d (%d bytes)", slot_index, (int)sizeof(temp_F01_res));
+            this->package_send_with_crc(temp_F01_res, sizeof(temp_F01_res));
+
+        } else {
+            // 如果请求的槽位索引无效
+            ESP_LOGW(TAG, "Received Fxx sub-command 0x01 with invalid slot index: %d. No response sent.", slot_index);
+            // 原始代码对无效索引没有响应，这里也保持一致
+        }
+
+    // --- 处理未知的子命令 ---
+    } else {
+        ESP_LOGW(TAG, "Received Fxx with unknown sub-command: 0x%02X. No response sent.", buf[5]);
+        // 原始代码对未知子命令没有响应，这里也保持一致
+    }
+}
 }
 // Implement all the remaining methods following the same pattern...
 // [Rest of the implementation would follow the same structure as above]
