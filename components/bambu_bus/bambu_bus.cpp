@@ -14,9 +14,12 @@ void BambuBus::setup() {
     
    // 设置 DE 引脚 (如果已配置)
    if (this->de_pin_ != nullptr) {
-        this->de_pin_->setup();
-        this->de_pin_->digital_write(false); // 空闲状态：接收 (通常为低电平)
-        ESP_LOGCONFIG(TAG, "DE Pin configured (GPIO%d).", this->de_pin_->dump_summary().c_str());
+        // GPIOBinaryOutput* 的 setup 通常由框架自动调用
+        // this->de_pin_->setup(); // 可能不需要
+        this->de_pin_->turn_off(); // <<<--- 使用 turn_off() 设置初始状态 (接收)
+        // vvv--- 获取引脚号需要通过 get_pin() 方法 ---vvv
+        ESP_LOGCONFIG(TAG, "DE Pin (GPIOBinaryOutput) configured on GPIO%d. Initial state: OFF (Receive)", this->de_pin_->get_pin()->get_pin());
+        // ^^^--- 注意是 de_pin_->get_pin()->get_pin() ---^^^
     } else {
         ESP_LOGCONFIG(TAG, "DE Pin not configured.");
     }
@@ -185,7 +188,7 @@ void BambuBus::send_uart(const uint8_t *data, uint16_t length) {
 // 用于带 DE 控制发送的新函数
 void BambuBus::send_uart_with_de(const uint8_t *data, uint16_t length) {
     if (this->de_pin_ != nullptr) {
-        this->de_pin_->digital_write(true); // 激活发送 (高电平)
+        this->de_pin_->turn_on(); // 激活发送 (高电平)
         // 根据收发器的需要，可能需要短暂延迟
         esphome::delayMicroseconds(10); // 示例：10 微秒
     }
@@ -202,7 +205,7 @@ void BambuBus::send_uart_with_de(const uint8_t *data, uint16_t length) {
     if (this->de_pin_ != nullptr) {
          // 在禁用 DE 之前可能需要短暂延迟
         esphome::delayMicroseconds(10); // 示例：10 微秒
-        this->de_pin_->digital_write(false); // 禁用发送 (低电平)
+        this->de_pin_->turn_off(); // 禁用发送 (低电平)
         ESP_LOGV(TAG, "DE pin set LOW.");
     }
 }
