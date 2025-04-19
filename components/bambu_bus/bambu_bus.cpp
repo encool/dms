@@ -20,8 +20,7 @@ void BambuBus::loop() {
 
     // Read incoming data
     while (available()) {
-        ESP_LOGI(BambuBus::TAG, "data available");
-
+        // ESP_LOGI(BambuBus::TAG, "data available");
         uint8_t c;
         if (read_byte(&c)) {
             RX_IRQ(c);
