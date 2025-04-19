@@ -58,6 +58,8 @@ public:
 
     void setup() override;
     void loop() override;
+    // 添加 DE 引脚的设置方法
+    void set_de_pin(esphome::GPIOPin *de_pin) { this->de_pin_ = de_pin; }
     
     package_type BambuBus_run();
     void set_need_to_save();
@@ -70,6 +72,7 @@ public:
     void set_filament_motion(int num, _filament_motion_state_set motion);
     _filament_motion_state_set get_filament_motion(int num);
     static constexpr const char *TAG = "BambuBus";  // 必须这样定义
+    esphome::GPIOPin* de_pin_;
 
 private:
     void BambuBUS_UART_Init();
@@ -78,6 +81,7 @@ private:
     void Bambubus_save();
     void RX_IRQ(uint8_t data);
     void send_uart(const uint8_t *data, uint16_t length);
+    void send_uart_with_de(const uint8_t *data, uint16_t length); // 用于带 DE 控制发送的新方法
     bool package_check_crc16(uint8_t *data, int data_length);
     void package_send_with_crc(uint8_t *data, int data_length);
     package_type get_packge_type(uint8_t *buf, int length);

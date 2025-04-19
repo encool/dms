@@ -11,6 +11,16 @@ void BambuBus::setup() {
     if (!esphome::global_preferences) {
         esphome::global_preferences = esphome::global_preferences;
     }
+    
+   // 设置 DE 引脚 (如果已配置)
+   if (this->de_pin_ != nullptr) {
+        this->de_pin_->setup();
+        this->de_pin_->digital_write(false); // 空闲状态：接收 (通常为低电平)
+        ESP_LOGCONFIG(TAG, "DE Pin configured (GPIO%d).", this->de_pin_->get_pin());
+    } else {
+        ESP_LOGCONFIG(TAG, "DE Pin not configured.");
+    }
+
     BambuBus_init();
 }
 
@@ -172,6 +182,31 @@ void BambuBus::send_uart(const uint8_t *data, uint16_t length) {
     write_array(data, length);
 }
 
+// 用于带 DE 控制发送的新函数
+void BambuBus::send_uart_with_de(const uint8_t *data, uint16_t length) {
+    if (this->de_pin_ != nullptr) {
+        this->de_pin_->digital_write(true); // 激活发送 (高电平)
+        // 根据收发器的需要，可能需要短暂延迟
+        esphome::delayMicroseconds(10); // 示例：10 微秒
+    }
+
+    // 写入数据
+    ESP_LOGD(TAG, "Sending %d bytes with DE control (if enabled)...", length);
+    this->write_array(data, length);
+
+    // 等待发送完成 - 非常重要!
+    this->flush();
+    ESP_LOGV(TAG, "UART flush complete.");
+
+
+    if (this->de_pin_ != nullptr) {
+         // 在禁用 DE 之前可能需要短暂延迟
+        esphome::delayMicroseconds(10); // 示例：10 微秒
+        this->de_pin_->digital_write(false); // 禁用发送 (低电平)
+        ESP_LOGV(TAG, "DE pin set LOW.");
+    }
+}
+
 bool BambuBus::package_check_crc16(uint8_t *data, int data_length) {
     crc_16.restart();
     data_length -= 2;
@@ -206,15 +241,15 @@ void BambuBus::package_send_with_crc(uint8_t *data, int data_length) {
     data[data_length + 1] = num >> 8;
     data_length += 2;
     
-    send_uart(data, data_length);
+    if (this->need_debug) {
+        ESP_LOGD(TAG, "Prepared package to send (%d bytes):", data_length);
+        // 使用 format_hex_pretty 打印准备发送的数据（需要包含 esphome/core/helpers.h）
+        ESP_LOGD(TAG, "  %s", esphome::format_hex_pretty(data, data_length).c_str());
+     }
+    // send_uart(data, data_length);
+    // 调用新函数以使用 DE 控制进行发送
+    send_uart_with_de(data, data_length);
     
-    if (need_debug) {
-        ESP_LOGD("BambuBus", "Sent package:");
-        for (int i = 0; i < data_length; i++) {
-            ESP_LOGD("BambuBus", "%02X ", data[i]);
-        }
-        // need_debug = false;
-    }
 }
 
 package_type BambuBus::get_packge_type(uint8_t *buf, int length) {
