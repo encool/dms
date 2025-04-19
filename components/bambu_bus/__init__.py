@@ -13,7 +13,7 @@ CONF_DE_PIN_ID = 'de_pin_id' # <<<--- 定义新的配置键
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(EmptyUARTComponent),
     # <<<--- 添加 DE 引脚配置选项 (可选)
-    cv.Optional(CONF_DE_PIN_ID): cv.use_id(output.GPIOPin)
+    cv.Optional(CONF_DE_PIN_ID): cv.use_id(output.BinaryOutput)
 }).extend(cv.COMPONENT_SCHEMA).extend(uart.UART_DEVICE_SCHEMA)
 
 def to_code(config):
