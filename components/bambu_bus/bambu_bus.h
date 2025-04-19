@@ -4,6 +4,7 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/uart/uart_component.h"
 #include "esphome/core/preferences.h"
+#include "esphome/components/gpio/output/gpio_binary_output.h" // 包含实际使用的类型
 
 
 #include "crc.h"
@@ -53,7 +54,7 @@ class BambuBus : public esphome::Component, public esphome::uart::UARTDevice {
 // 添加这个声明
 protected:
     esphome::ESPPreferenceObject pref_;
-    esphome::GPIOPin *de_pin_{nullptr}; // <<<--- 添加 DE 引脚成员变量
+    esphome::gpio::GPIOBinaryOutput *de_pin_{nullptr}; // <<<--- 添加 DE 引脚成员变量
 
 public:
     BambuBus() : UARTDevice() {}
@@ -61,7 +62,7 @@ public:
     void setup() override;
     void loop() override;
     // 添加 DE 引脚的设置方法
-    void set_de_pin(esphome::GPIOPin *de_pin) { this->de_pin_ = de_pin; }
+    void set_de_pin(esphome::gpio::GPIOBinaryOutput *de_pin) { this->de_pin_ = de_pin; }
     
     package_type BambuBus_run();
     void set_need_to_save();
