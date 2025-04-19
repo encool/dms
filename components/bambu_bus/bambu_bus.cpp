@@ -99,7 +99,7 @@ void BambuBus::RX_IRQ(uint8_t data) {
     static uint8_t data_CRC8_index;
     
     // 打印每次进入函数时的基本信息
-    ESP_LOGI(TAG, "RX_IRQ: data=0x%02X, _index=%d, length=%d", data, _index, length);
+    // ESP_LOGI(TAG, "RX_IRQ: data=0x%02X, _index=%d, length=%d", data, _index, length);
 
     if (_index == 0) {
         if (data == 0x3D) {
@@ -118,7 +118,7 @@ void BambuBus::RX_IRQ(uint8_t data) {
         BambuBus_data_buf[_index] = data;
         
         // 打印每个字节的存储位置
-        ESP_LOGVV(TAG, "Stored data 0x%02X at index %d", data, _index);
+        // ESP_LOGD(TAG, "Stored data 0x%02X at index %d", data, _index);
 
         if (_index == 1) {
             if (data & 0x80) {
@@ -153,7 +153,10 @@ void BambuBus::RX_IRQ(uint8_t data) {
         ++_index;
         if (_index >= length) {
             ESP_LOGI(TAG, "Complete frame received (%d bytes)", length);
-            // ESP_LOG_BUFFER_HEXDUMP(TAG, BambuBus_data_buf, length, ESP_LOG_DEBUG);
+            // 使用 ESPHome 的 format_hex_pretty
+            std::string hexdump = esphome::format_hex_pretty(BambuBus_data_buf, length);
+            // 注意：可能需要分行打印，如果 hexdump 太长
+            ESP_LOGD(TAG, "Received Data:\n%s", hexdump.c_str());            
             _index = 0;
             memcpy(buf_X, BambuBus_data_buf, length);
             BambuBus_have_data = length;
