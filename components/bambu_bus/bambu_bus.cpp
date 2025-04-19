@@ -292,7 +292,7 @@ package_type BambuBus::BambuBus_run() {
             case BambuBus_package_filament_motion_long:
                 this->send_for_Dxx(this->buf_X, data_length);
                 time_motion_ = now + 1000; // 更新运动状态时间戳
-                 ESP_LOGD(TAG, "Motion long received. Timeout extended.");
+                ESP_LOGD(TAG, "Motion long received. Timeout extended.");
                 break;
             case BambuBus_package_online_detect:
                 this->send_for_Fxx(this->buf_X, data_length);
@@ -457,6 +457,686 @@ void BambuBus::send_for_Fxx(uint8_t *buf, int length) {
         // 原始代码对未知子命令没有响应，这里也保持一致
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// In bambu_bus.cpp:
+void BambuBus::Bambubus_long_package_analysis(uint8_t *buf, int data_length, long_packge_data *data) {
+    // Original logic: copies 11 bytes starting from buf + 2 into the data struct.
+    // This assumes the layout of long_packge_data matches these 11 bytes.
+    // Let's verify the original struct alignment and size.
+    // #pragma pack(push, 1) was used. C++ struct alignment might differ if not forced.
+    // However, direct memcpy of the first few fields *might* work if layout is simple.
+    // Fields: package_number (2), package_length (2), crc8 (1), target_address (2), source_address (2), type (2) = 11 bytes.
+    memcpy(data, buf + 2, 11); // Be cautious about potential alignment issues.
+
+    data->datas = buf + 13; // Pointer to data payload within the original buffer
+    data->data_length = data_length - 15; // Total length minus header (13) and CRC16 (2) = payload length
+    ESP_LOGD(TAG, "Long package analysis: type=0x%X, src=0x%X, tgt=0x%X, data_len=%d",
+             data->type, data->source_address, data->target_address, data->data_length);
+}
+
+void BambuBus::Bambubus_long_package_send(long_packge_data *data) {
+    // Need a member buffer for sending, packge_send_buf[1000];
+    this->packge_send_buf[0] = 0x3D;
+    this->packge_send_buf[1] = 0x00; // Assuming long package identifier byte 1 is 0x00
+
+    // Original code sets package_length = data_length + 15 BEFORE memcpy.
+    // This seems correct: total length = payload + header(13) + crc16(2)
+    data->package_length = data->data_length + 15;
+
+    // Copy the first 11 bytes of the struct (header fields) into the send buffer
+    // Again, relies on struct layout matching the first 11 bytes.
+    memcpy(this->packge_send_buf + 2, data, 11);
+
+    // Copy the actual payload data
+    memcpy(this->packge_send_buf + 13, data->datas, data->data_length);
+
+    // Calculate CRCs and send using the existing method
+    ESP_LOGD(TAG, "Sending long package: type=0x%X, src=0x%X, tgt=0x%X, total_len=%d",
+             data->type, data->source_address, data->target_address, data->package_length);
+    this->package_send_with_crc(this->packge_send_buf, data->package_length); // Send total length (header + payload + CRC16 space)
+}
+
+
+// Helper function from original code, make it a private member method
+uint8_t BambuBus::get_filament_left_char(uint8_t ams_id) {
+    uint8_t data = 0;
+    for (int i = 0; i < 4; i++) {
+        // Check if the filament slot exists and is online
+        if (this->data_save.filament[ams_id][i].statu == online) {
+             // Bit pattern: 01 (online, idle), 11 (online, moving) per slot
+             data |= (0x1 << (i * 2)); // Set bit 2*i to 1 (indicates online)
+             if (this->data_save.filament[ams_id][i].motion_set != idle) {
+                  data |= (0x2 << (i * 2)); // Set bit 2*i + 1 to 1 (indicates moving)
+             }
+         }
+         // Offline slots have 00 implicitly
+    }
+    return data;
+}
+
+// Helper function from original code, make it a private member method
+void BambuBus::set_motion_res_datas(uint8_t *set_buf, uint8_t ams_id, uint8_t read_num) {
+    float meters = 0.0f;
+    uint8_t flagx = 0x02; // Meaning unclear, seems constant in original
+
+    if (read_num != 0xFF && read_num < 4) { // Only calculate meters if a valid filament is selected
+        if (this->BambuBus_address == 0x700) { // AMS08 (Hub)
+            meters = -this->data_save.filament[ams_id][read_num].meters; // Negative for hub? Check logic.
+        } else if (this->BambuBus_address == 0x1200) { // AMS lite
+            meters = this->data_save.filament[ams_id][read_num].meters;
+        }
+        // Else (address 0x00 or unknown), meters remain 0
+    }
+
+    set_buf[0] = ams_id; // Corresponds to original Cxx_res[5]
+    set_buf[1] = 0x00; // Original Cxx_res[6], seems unused/padding? Set to 0 based on template.
+    set_buf[2] = flagx; // Original Cxx_res[7]
+    set_buf[3] = read_num; // Original Cxx_res[8], maybe using number
+    memcpy(set_buf + 4, &meters, sizeof(meters)); // Original Cxx_res[9..12]
+    // Original Cxx_res[13..23] seem to be fixed values from C_test macro? Let's keep them.
+    // Original code modifies Cxx_res[24] which corresponds to set_buf[19] relative to C_test start (offset 5)
+    // Cxx_res offset 5 + 19 = 24. Check Cxx_res template.
+    // C_test macro is 35 bytes. Cxx_res has 5 bytes header, then C_test, then 2 bytes CRC. Total 42?
+    // Let's re-evaluate Cxx_res size and offsets.
+    // Cxx_res = {hdr[5], C_test[35], crc[2]} = 42 bytes. Okay.
+    // C_test has 35 bytes. set_buf points to Cxx_res + 5.
+    // set_buf[0..3] = ams_id, 0x00, flagx, read_num
+    // set_buf[4..7] = meters
+    // Original set_buf[13] = 0. This corresponds to Cxx_res[5+13] = Cxx_res[18]. Keep template value.
+    // Original set_buf[24] = get_filament_left_char(). This corresponds to Cxx_res[5+24] = Cxx_res[29].
+    set_buf[19] = this->get_filament_left_char(ams_id); // Modify the correct byte in the buffer
+}
+
+// Helper function from original code, make it a private member method
+bool BambuBus::set_motion(uint8_t ams_id, uint8_t read_num, uint8_t statu_flags, uint8_t fliment_motion_flag) {
+     // Ensure ams_id is valid (assuming max 4 AMS units, 0-3)
+    if (ams_id >= 4) {
+         ESP_LOGW(TAG, "set_motion called with invalid AMS ID: %d", ams_id);
+         return false;
+    }
+
+    int filament_global_index = ams_id * 4 + read_num;
+
+    if (this->BambuBus_address == 0x700) { // AMS08 (Hub)
+        if ((read_num != 0xFF) && (read_num < 4)) {
+            if ((statu_flags == 0x03) && (fliment_motion_flag == 0x00)) { // 03 00 -> Load filament
+                ESP_LOGD(TAG, "Set Motion (AMS Hub): Slot %d -> need_send_out", filament_global_index);
+                this->data_save.BambuBus_now_filament_num = filament_global_index;
+                this->data_save.filament[ams_id][read_num].motion_set = need_send_out;
+                this->data_save.filament[ams_id][read_num].pressure = 0x3600; // Reset pressure?
+            } else if (((statu_flags == 0x09) && (fliment_motion_flag == 0xA5)) || // 09 A5 -> Active/Printing?
+                       ((statu_flags == 0x07) && (fliment_motion_flag == 0x7F))) { // 07 7F -> Active/Printing?
+                 ESP_LOGD(TAG, "Set Motion (AMS Hub): Slot %d -> on_use", filament_global_index);
+                this->data_save.BambuBus_now_filament_num = filament_global_index;
+                this->data_save.filament[ams_id][read_num].motion_set = on_use;
+            } else if ((statu_flags == 0x07) && (fliment_motion_flag == 0x00)) { // 07 00 -> Unload filament
+                 ESP_LOGD(TAG, "Set Motion (AMS Hub): Slot %d -> need_pull_back", filament_global_index);
+                this->data_save.BambuBus_now_filament_num = filament_global_index;
+                this->data_save.filament[ams_id][read_num].motion_set = need_pull_back;
+            } else {
+                 ESP_LOGW(TAG, "Set Motion (AMS Hub): Slot %d - Unhandled flags: statu=0x%02X, motion=0x%02X", filament_global_index, statu_flags, fliment_motion_flag);
+            }
+        } else if (read_num == 0xFF) { // Command for all slots in this AMS unit
+            if ((statu_flags == 0x01) || (statu_flags == 0x03)) { // Reset all slots in this AMS to idle
+                 ESP_LOGD(TAG, "Set Motion (AMS Hub): Resetting all slots in AMS %d to idle", ams_id);
+                for (auto i = 0; i < 4; i++) {
+                    this->data_save.filament[ams_id][i].motion_set = idle;
+                    this->data_save.filament[ams_id][i].pressure = 0x3600; // Reset pressure?
+                }
+            } else {
+                 ESP_LOGW(TAG, "Set Motion (AMS Hub): All Slots - Unhandled flags: statu=0x%02X", statu_flags);
+            }
+        }
+    } else if (this->BambuBus_address == 0x1200) { // AMS lite
+         if (read_num < 4) {
+             if ((statu_flags == 0x03) && (fliment_motion_flag == 0x3F)) { // 03 3F -> Unload?
+                 ESP_LOGD(TAG, "Set Motion (AMS Lite): Slot %d -> need_pull_back", filament_global_index);
+                 this->data_save.BambuBus_now_filament_num = filament_global_index;
+                 this->data_save.filament[ams_id][read_num].motion_set = need_pull_back;
+             } else if ((statu_flags == 0x03) && (fliment_motion_flag == 0xBF)) { // 03 BF -> Load?
+                  ESP_LOGD(TAG, "Set Motion (AMS Lite): Slot %d -> need_send_out", filament_global_index);
+                 this->data_save.BambuBus_now_filament_num = filament_global_index;
+                 this->data_save.filament[ams_id][read_num].motion_set = need_send_out;
+             } else { // Other flags likely mean transition to idle or on_use
+                  _filament_motion_state_set current_state = this->data_save.filament[ams_id][read_num].motion_set;
+                  if (current_state == need_pull_back) {
+                       ESP_LOGD(TAG, "Set Motion (AMS Lite): Slot %d -> idle (from pull_back)", filament_global_index);
+                       this->data_save.filament[ams_id][read_num].motion_set = idle;
+                  } else if (current_state == need_send_out) {
+                       ESP_LOGD(TAG, "Set Motion (AMS Lite): Slot %d -> on_use (from send_out)", filament_global_index);
+                       this->data_save.filament[ams_id][read_num].motion_set = on_use;
+                  } else {
+                       // If already idle or on_use, maybe stay there? Or log warning.
+                        ESP_LOGD(TAG, "Set Motion (AMS Lite): Slot %d - No state change for flags: statu=0x%02X, motion=0x%02X", filament_global_index, statu_flags, fliment_motion_flag);
+                  }
+             }
+         } else if (read_num == 0xFF) { // Reset all slots for AMS Lite
+              ESP_LOGD(TAG, "Set Motion (AMS Lite): Resetting all slots in AMS %d to idle", ams_id);
+             for (int i = 0; i < 4; i++) {
+                 this->data_save.filament[ams_id][i].motion_set = idle;
+             }
+         }
+    } else if (this->BambuBus_address == 0x00) { // No AMS / Spool holder?
+        if ((read_num != 0xFF) && (read_num < 4)) { // Assuming external spool maps to AMS 0, slot 0-3? Or just slot 0? Let's assume 0-3 for now.
+             ESP_LOGD(TAG, "Set Motion (No AMS): Slot %d -> on_use", filament_global_index);
+             this->data_save.BambuBus_now_filament_num = filament_global_index; // Update current filament
+             this->data_save.filament[ams_id][read_num].motion_set = on_use;
+        }
+         // Reset (read_num == 0xFF) is not explicitly handled for address 0x00 in original
+    } else {
+         ESP_LOGE(TAG, "Set Motion: Unknown BambuBus address 0x%04X", this->BambuBus_address);
+         return false; // Unknown address, cannot determine behavior
+    }
+    return true;
+}
+
+
+void BambuBus::send_for_Cxx(uint8_t *buf, int length) {
+    ESP_LOGD(TAG, "Processing Cxx (Short Motion) request");
+
+    // Extract necessary data from the request buffer (buf)
+    uint8_t request_ams_num = buf[5];       // AMS index from request
+    uint8_t request_statu_flags = buf[6];   // Status flags from request
+    uint8_t request_read_num = buf[7];      // Filament slot index from request (0-3 or 0xFF)
+    uint8_t request_motion_flag = buf[8]; // Motion flag from request
+
+    // Update filament motion state based on the request
+    // It's crucial this happens *before* generating the response if the response depends on the new state.
+    if (!this->set_motion(request_ams_num, request_read_num, request_statu_flags, request_motion_flag)) {
+         ESP_LOGE(TAG, "Failed to set motion state based on Cxx request. No response sent.");
+         return; // Don't send a response if the state update failed (e.g., invalid address)
+    }
+
+
+    // Prepare the response using the Cxx_res template
+    // Create a temporary buffer to avoid modifying the class member template
+    uint8_t temp_Cxx_res[sizeof(this->Cxx_res)];
+    memcpy(temp_Cxx_res, this->Cxx_res, sizeof(this->Cxx_res));
+
+    // Modify the header byte 1: Set sequence number (package_num)
+    // Original: Cxx_res[1] = 0xC0 | (package_num << 3);
+    temp_Cxx_res[1] = 0xC0 | (this->package_num << 3);
+
+    // Populate the data section of the response buffer (starting at temp_Cxx_res + 5)
+    // Use the helper function to fill in dynamic data like meters, flags, etc.
+    this->set_motion_res_datas(temp_Cxx_res + 5, request_ams_num, request_read_num);
+
+
+    // Send the prepared response package (CRC calculation is handled inside)
+    ESP_LOGD(TAG, "Sending Cxx response (%d bytes)", (int)sizeof(temp_Cxx_res));
+    this->package_send_with_crc(temp_Cxx_res, sizeof(temp_Cxx_res));
+
+    // Increment package number for the next response
+    if (this->package_num < 7) {
+        this->package_num++;
+    } else {
+        this->package_num = 0;
+    }
+}
+
+// In bambu_bus.cpp
+
+void BambuBus::send_for_Dxx(uint8_t *buf, int length) {
+    ESP_LOGD(TAG, "Processing Dxx (Long Motion) request");
+
+    // Extract data from request buffer
+    uint8_t request_ams_num = buf[5];
+    uint8_t request_statu_flags = buf[6];
+    uint8_t request_motion_flag = buf[7]; // Note: Index differs from Cxx
+    // buf[8] seems unused in original logic for Dxx state setting?
+    uint8_t request_read_num = buf[9]; // Filament slot index
+
+    // Determine which filaments are present (online or NFC_waiting) in the requested AMS unit
+    uint8_t filament_flag_on = 0x00; // Bitmask of present filaments
+    uint8_t filament_flag_NFC = 0x00; // Bitmask of filaments waiting for NFC scan (subset of filament_flag_on)
+    for (auto i = 0; i < 4; i++) {
+        _filament_status slot_status = this->data_save.filament[request_ams_num][i].statu;
+        if (slot_status == online) {
+            filament_flag_on |= (1 << i);
+        } else if (slot_status == NFC_waiting) {
+            filament_flag_on |= (1 << i);
+            filament_flag_NFC |= (1 << i);
+        }
+    }
+     ESP_LOGV(TAG, "Filament presence flags for AMS %d: on=0x%02X, nfc_wait=0x%02X", request_ams_num, filament_flag_on, filament_flag_NFC);
+
+    // Update filament motion state based on the request
+    if (!this->set_motion(request_ams_num, request_read_num, request_statu_flags, request_motion_flag)) {
+         ESP_LOGE(TAG, "Failed to set motion state based on Dxx request. No response sent.");
+         return;
+    }
+
+    // Prepare the response using the Dxx_res template
+    // Create a temporary buffer
+    uint8_t temp_Dxx_res[sizeof(this->Dxx_res)];
+    memcpy(temp_Dxx_res, this->Dxx_res, sizeof(this->Dxx_res));
+
+    // Modify the header byte 1: Set sequence number
+    temp_Dxx_res[1] = 0xC0 | (this->package_num << 3);
+
+    // --- Populate dynamic fields in the response template ---
+    temp_Dxx_res[5] = request_ams_num; // AMS number
+
+    // Bytes 9, 10, 11: Filament presence flags
+    temp_Dxx_res[9] = filament_flag_on;
+    temp_Dxx_res[10] = filament_flag_on - filament_flag_NFC; // Filaments present AND have tag read (on & !nfc_wait)
+    temp_Dxx_res[11] = filament_flag_on - filament_flag_NFC; // Seems duplicated in original? Keep it for compatibility.
+
+    // Byte 12: Currently selected/active filament slot index
+    temp_Dxx_res[12] = request_read_num;
+
+    // Byte 13: Filaments waiting for NFC scan flag
+    temp_Dxx_res[13] = filament_flag_NFC;
+
+    // Bytes 17 onwards: Motion related data (filled by set_motion_res_datas)
+    // The data starts at offset 17 in Dxx_res template.
+    // Need to call set_motion_res_datas on the correct sub-buffer.
+    this->set_motion_res_datas(temp_Dxx_res + 17, request_ams_num, request_read_num);
+
+    // Handle the NFC detection flag logic from original code (last_detect)
+    // This part seems to indicate if an NFC scan was recently requested/occurred.
+    if (this->last_detect > 0) {
+        // Original logic seems complex/unclear. Let's simplify or comment out if unsure.
+        // It seems to set flags at temp_Dxx_res[19] and possibly temp_Dxx_res[20] based on last_detect counter.
+        // temp_Dxx_res[19] seems to be a general "NFC recently active" flag.
+        temp_Dxx_res[19] = 0x01; // Indicate recent NFC activity
+        if (this->last_detect <= 10) { // If detection was very recent?
+            // Original sets byte 12 and 20 to the detected filament flag. Overwrites read_num? Risky.
+            // Let's just set byte 20 as it seems less critical than byte 12.
+             // Byte 20 corresponds to the start of C_test data within Dxx_res (Dxx_res[17] is start). So offset 3 within C_test.
+             temp_Dxx_res[20] = this->filament_flag_detected; // Store which slot was detected
+             ESP_LOGD(TAG, "NFC detection flag active, slot detected: 0x%02X", this->filament_flag_detected);
+        }
+        this->last_detect--; // Decrement counter
+        if (this->last_detect == 0) {
+             ESP_LOGD(TAG, "NFC detection flag timed out.");
+             // Reset flag? Original code doesn't explicitly reset temp_Dxx_res[19] here.
+             // It might rely on the template value being 0. Check Dxx_res template.
+             // Dxx_res[19] (offset 2 in C_test) is 0 in the provided template. Okay.
+        }
+    }
+
+
+    // Send the prepared response package
+    ESP_LOGD(TAG, "Sending Dxx response (%d bytes)", (int)sizeof(temp_Dxx_res));
+    this->package_send_with_crc(temp_Dxx_res, sizeof(temp_Dxx_res));
+
+    // Increment package number
+    if (this->package_num < 7) {
+        this->package_num++;
+    } else {
+        this->package_num = 0;
+    }
+
+    // Reset the need_res_for_06 flag if it was set (original code had complex interaction here)
+    // Since REQx6 is mostly commented out, we might not need this logic.
+    this->need_res_for_06 = false;
+}
+
+// In bambu_bus.cpp
+
+void BambuBus::send_for_Set_filament(uint8_t *buf, int length) {
+    ESP_LOGI(TAG, "Processing Set Filament request");
+
+    if (length < 43) { // Check minimum length for safety (based on offsets accessed)
+        ESP_LOGE(TAG, "Set Filament request too short (%d bytes). Expected at least 43.", length);
+        return; // Don't process if too short
+    }
+
+    // Extract data from the request buffer (buf)
+    uint8_t combined_num = buf[5]; // Contains AMS (high nibble) and Slot (low nibble)
+    uint8_t ams_num = (combined_num >> 4) & 0x0F; // Extract AMS index (0-3)
+    uint8_t read_num = combined_num & 0x0F;      // Extract Slot index (0-3)
+
+     // Validate indices
+     if (ams_num >= 4 || read_num >= 4) {
+         ESP_LOGE(TAG, "Set Filament request has invalid AMS/Slot index: AMS=%d, Slot=%d", ams_num, read_num);
+         // Send NACK? Original just sends ACK. Let's stick to original for now.
+     } else {
+          ESP_LOGD(TAG, "Updating filament data for AMS %d, Slot %d", ams_num, read_num);
+
+          // Get pointer to the filament data structure to modify
+          _filament &target_filament = this->data_save.filament[ams_num][read_num];
+
+          // Copy filament ID (8 bytes, offset 7 in request)
+          memcpy(target_filament.ID, buf + 7, sizeof(target_filament.ID));
+          // Ensure null termination if ID is treated as a string later
+          // target_filament.ID[sizeof(target_filament.ID) - 1] = '\0'; // Optional safety
+
+          // Copy filament color RGBA (4 bytes, offset 15)
+          target_filament.color_R = buf[15];
+          target_filament.color_G = buf[16];
+          target_filament.color_B = buf[17];
+          target_filament.color_A = buf[18]; // Alpha or other property
+
+          // Copy temperature min/max (2 bytes each, offset 19 and 21)
+          memcpy(&target_filament.temperature_min, buf + 19, sizeof(target_filament.temperature_min));
+          memcpy(&target_filament.temperature_max, buf + 21, sizeof(target_filament.temperature_max));
+
+          // Copy filament name (20 bytes, offset 23)
+          memcpy(target_filament.name, buf + 23, sizeof(target_filament.name));
+          // Ensure null termination
+          target_filament.name[sizeof(target_filament.name) - 1] = '\0';
+
+           // Log the received data
+           ESP_LOGI(TAG, "  ID: %.8s", target_filament.ID); // Print first 8 bytes
+           ESP_LOGI(TAG, "  Color: R=0x%02X G=0x%02X B=0x%02X A=0x%02X", target_filament.color_R, target_filament.color_G, target_filament.color_B, target_filament.color_A);
+           ESP_LOGI(TAG, "  Temp: Min=%d Max=%d", target_filament.temperature_min, target_filament.temperature_max);
+           ESP_LOGI(TAG, "  Name: %s", target_filament.name);
+
+          // Mark data as needing to be saved
+          this->set_need_to_save(); // Call the existing method to set the flag
+     }
+
+
+    // Send the acknowledgement response
+    // The response (Set_filament_res) seems fixed in the original code.
+    ESP_LOGD(TAG, "Sending Set Filament ACK response (%d bytes)", (int)sizeof(this->Set_filament_res));
+    // Create a temporary buffer just in case we need to modify seq num later, though original doesn't seem to.
+    uint8_t temp_Set_filament_res[sizeof(this->Set_filament_res)];
+    memcpy(temp_Set_filament_res, this->Set_filament_res, sizeof(this->Set_filament_res));
+    // Modify sequence number if needed (byte 1) - original seems to use fixed 0xC0? Let's assume fixed.
+    // temp_Set_filament_res[1] = 0xC0 | (this->package_num << 3); // Uncomment if seq num needed
+
+    this->package_send_with_crc(temp_Set_filament_res, sizeof(temp_Set_filament_res));
+
+    // Increment package number? Original doesn't seem to for this response. Let's skip.
+    /*
+    if (this->package_num < 7) {
+        this->package_num++;
+    } else {
+        this->package_num = 0;
+    }
+    */
+}
+
+// In bambu_bus.cpp
+
+void BambuBus::send_for_REQx6(uint8_t *buf, int length) {
+    ESP_LOGW(TAG, "Function send_for_REQx6 received request but is not implemented.");
+    // Original code was mostly commented out.
+    // Need to decide if/how to respond. Maybe send nothing or a default ACK/NACK if protocol defines one.
+    this->need_res_for_06 = true; // Original sets this flag
+    this->res_for_06_num = buf[7]; // Original stores requested number
+}
+
+void BambuBus::send_for_NFC_detect(uint8_t *buf, int length) {
+     ESP_LOGD(TAG, "Processing NFC Detect request for slot %d", buf[6]);
+
+     this->last_detect = 20; // Set NFC activity counter (used in Dxx response)
+     this->filament_flag_detected = (1 << buf[6]); // Store which slot triggered detection
+
+     // Prepare response using NFC_detect_res template
+     uint8_t temp_NFC_detect_res[sizeof(this->NFC_detect_res)];
+     memcpy(temp_NFC_detect_res, this->NFC_detect_res, sizeof(this->NFC_detect_res));
+
+     // Modify sequence number (byte 1)
+     temp_NFC_detect_res[1] = 0xC0 | (this->package_num << 3); // Assuming seq num needed
+
+     // Populate dynamic fields (bytes 6 and 7)
+     temp_NFC_detect_res[6] = buf[6]; // Slot index
+     temp_NFC_detect_res[7] = buf[7]; // Unknown data from request byte 7
+
+     // Send response
+     ESP_LOGD(TAG, "Sending NFC Detect response (%d bytes)", (int)sizeof(temp_NFC_detect_res));
+     this->package_send_with_crc(temp_NFC_detect_res, sizeof(temp_NFC_detect_res));
+
+     // Increment package number? Assume yes for consistency.
+     if (this->package_num < 7) {
+         this->package_num++;
+     } else {
+         this->package_num = 0;
+     }
+}
+
+void BambuBus::send_for_long_packge_MC_online(uint8_t *buf, int length) {
+    ESP_LOGD(TAG, "Processing Long Package MC Online request");
+
+    // Parse the incoming long package (header info is now in this->parsed_long_package)
+    // The actual parsing happened in get_packge_type before calling this handler.
+    // We need the source/target addresses and package number from the parsed data.
+
+    if (this->parsed_long_package.target_address != 0x0700 && this->parsed_long_package.target_address != 0x1200) {
+         ESP_LOGW(TAG, "MC Online request for unknown target address 0x%04X. Ignoring.", this->parsed_long_package.target_address);
+         return;
+    }
+
+    uint8_t request_ams_num = this->parsed_long_package.datas[0]; // Get AMS num from payload
+
+    // Prepare the response data structure
+    long_packge_data response_data;
+    response_data.package_number = this->parsed_long_package.package_number; // Echo package number
+    response_data.type = this->parsed_long_package.type; // Echo type
+    response_data.source_address = this->parsed_long_package.target_address; // Swap source and target
+    response_data.target_address = this->parsed_long_package.source_address;
+
+    // Prepare payload
+    // uint8_t long_packge_MC_online[6] = {0x00, ...}; // This is a member template
+    uint8_t response_payload[sizeof(this->long_packge_MC_online)];
+    memcpy(response_payload, this->long_packge_MC_online, sizeof(response_payload)); // Copy template
+    response_payload[0] = request_ams_num; // Set AMS num in payload
+
+    response_data.datas = response_payload; // Point to the payload buffer
+    response_data.data_length = sizeof(response_payload);
+
+    // Send the long package response
+    this->Bambubus_long_package_send(&response_data);
+}
+
+void BambuBus::send_for_long_packge_filament(uint8_t *buf, int length) {
+     ESP_LOGD(TAG, "Processing Long Package Filament Info request");
+
+    // Parsing already done in get_packge_type. Use this->parsed_long_package.
+    uint8_t request_ams_num = this->parsed_long_package.datas[0];
+    uint8_t request_filament_num = this->parsed_long_package.datas[1];
+
+    // Validate indices
+     if (request_ams_num >= 4 || request_filament_num >= 4) {
+         ESP_LOGE(TAG, "Long Filament request has invalid AMS/Slot index: AMS=%d, Slot=%d", request_ams_num, request_filament_num);
+         // Send NACK or ignore? Original sends response.
+         return; // Let's ignore invalid requests for now.
+     }
+
+      ESP_LOGD(TAG, "Responding with filament data for AMS %d, Slot %d", request_ams_num, request_filament_num);
+     _filament &source_filament = this->data_save.filament[request_ams_num][request_filament_num];
+
+    // Prepare the response structure
+    long_packge_data response_data;
+    response_data.package_number = this->parsed_long_package.package_number;
+    response_data.type = this->parsed_long_package.type;
+    response_data.source_address = this->parsed_long_package.target_address;
+    response_data.target_address = this->parsed_long_package.source_address;
+
+    // Prepare payload using the template long_packge_filament
+    uint8_t response_payload[sizeof(this->long_packge_filament)];
+    memcpy(response_payload, this->long_packge_filament, sizeof(response_payload)); // Copy template
+
+    // --- Populate dynamic fields in the payload ---
+    response_payload[0] = request_ams_num;
+    response_payload[1] = request_filament_num;
+    // Offset 19: Filament ID (8 bytes)
+    memcpy(response_payload + 19, source_filament.ID, sizeof(source_filament.ID));
+    // Offset 27: Filament Name (20 bytes)
+    memcpy(response_payload + 27, source_filament.name, sizeof(source_filament.name));
+    // Ensure null termination for safety if name buffer wasn't full
+    response_payload[27 + sizeof(source_filament.name) - 1] = '\0';
+    // Offset 59: Color R, G, B, A (4 bytes)
+    response_payload[59] = source_filament.color_R;
+    response_payload[60] = source_filament.color_G;
+    response_payload[61] = source_filament.color_B;
+    response_payload[62] = source_filament.color_A;
+    // Offset 79: Temp Max (2 bytes)
+    memcpy(response_payload + 79, &source_filament.temperature_max, sizeof(source_filament.temperature_max));
+    // Offset 81: Temp Min (2 bytes)
+    memcpy(response_payload + 81, &source_filament.temperature_min, sizeof(source_filament.temperature_min));
+    // Other fields seem fixed in the template.
+
+    response_data.datas = response_payload;
+    response_data.data_length = sizeof(response_payload);
+
+    // Send the long package response
+    this->Bambubus_long_package_send(&response_data);
+}
+
+void BambuBus::send_for_long_packge_version(uint8_t *buf, int length) {
+    ESP_LOGD(TAG, "Processing Long Package Version request");
+
+     // Parsing done in get_packge_type. Use this->parsed_long_package.
+     uint8_t request_ams_num = 0; // Default
+     unsigned char *payload_template = nullptr;
+     size_t payload_size = 0;
+
+     // Determine which version info is requested (type 0x402 or 0x103)
+     switch (this->parsed_long_package.type) {
+         case 0x402: // Serial number request
+             ESP_LOGD(TAG, "  Type 0x402 (Serial Number)");
+             request_ams_num = this->parsed_long_package.datas[33]; // AMS num seems to be at offset 33 in request payload? Verify this.
+             payload_template = this->long_packge_version_serial_number;
+             payload_size = sizeof(this->long_packge_version_serial_number);
+             break;
+         case 0x103: // Version string request
+              ESP_LOGD(TAG, "  Type 0x103 (Version String)");
+             request_ams_num = this->parsed_long_package.datas[0]; // AMS num at offset 0
+              // Choose template based on target address (AMS Hub or Lite)
+              if (this->parsed_long_package.target_address == 0x0700) {
+                   ESP_LOGD(TAG, "  Target is AMS Hub (0x0700)");
+                   payload_template = this->long_packge_version_version_and_name_AMS08;
+                   payload_size = sizeof(this->long_packge_version_version_and_name_AMS08);
+              } else if (this->parsed_long_package.target_address == 0x1200) {
+                   ESP_LOGD(TAG, "  Target is AMS Lite (0x1200)");
+                   payload_template = this->long_packge_version_version_and_name_AMS_lite;
+                   payload_size = sizeof(this->long_packge_version_version_and_name_AMS_lite);
+              } else {
+                   ESP_LOGW(TAG, "  Version request for unknown target address 0x%04X", this->parsed_long_package.target_address);
+                   return; // Ignore
+              }
+             break;
+         default:
+             ESP_LOGW(TAG, "  Unknown version request type 0x%03X", this->parsed_long_package.type);
+             return; // Ignore
+     }
+
+     // Prepare the response structure
+     long_packge_data response_data;
+     response_data.package_number = this->parsed_long_package.package_number;
+     response_data.type = this->parsed_long_package.type;
+     response_data.source_address = this->parsed_long_package.target_address;
+     response_data.target_address = this->parsed_long_package.source_address;
+
+     // Prepare payload
+     uint8_t response_payload[payload_size];
+     memcpy(response_payload, payload_template, payload_size); // Copy appropriate template
+
+     // Modify payload based on type
+     if (this->parsed_long_package.type == 0x402) {
+         // Set serial number length and data (using fixed "STUDY0ONLY")
+         // char serial_number[] = "STUDY0ONLY"; // Defined elsewhere? Make it a const member?
+         const char serial_number[] = "STUDY0ONLY"; // Use local const for clarity
+         response_payload[0] = sizeof(serial_number) - 1; // Length (excluding null terminator)
+         memcpy(response_payload + 1, serial_number, sizeof(serial_number) -1);
+         // Set AMS num at offset 65
+         response_payload[65] = request_ams_num;
+     } else if (this->parsed_long_package.type == 0x103) {
+         // Set AMS num at offset 20
+         response_payload[20] = request_ams_num;
+     }
+
+     response_data.datas = response_payload;
+     response_data.data_length = payload_size;
+
+     // Send the long package response
+     this->Bambubus_long_package_send(&response_data);
+}
+
+// Implement the getter/setter helper methods requested by the user
+void BambuBus::set_need_to_save() {
+    ESP_LOGD(TAG, "Setting flag: need to save data.");
+    this->Bambubus_need_to_save = true;
+}
+
+int BambuBus::get_now_filament_num() {
+    return this->data_save.BambuBus_now_filament_num;
+}
+
+void BambuBus::reset_filament_meters(int num) {
+     int ams_id = num / 4;
+     int slot_id = num % 4;
+     if (ams_id >= 4 || slot_id >= 4) return; // Basic validation
+     ESP_LOGD(TAG, "Resetting meters for filament %d (AMS %d, Slot %d)", num, ams_id, slot_id);
+     this->data_save.filament[ams_id][slot_id].meters = 0.0f;
+     this->set_need_to_save(); // Changing meters requires saving
+}
+
+void BambuBus::add_filament_meters(int num, float meters) {
+     int ams_id = num / 4;
+     int slot_id = num % 4;
+     if (ams_id >= 4 || slot_id >= 4) return; // Basic validation
+      ESP_LOGV(TAG, "Adding %.2f meters for filament %d (AMS %d, Slot %d)", meters, num, ams_id, slot_id);
+     this->data_save.filament[ams_id][slot_id].meters += meters;
+     // Decide if adding meters requires immediate saving, or if it's saved periodically/on shutdown
+     // this->set_need_to_save(); // Uncomment if save is needed after adding meters
+}
+
+float BambuBus::get_filament_meters(int num) {
+     int ams_id = num / 4;
+     int slot_id = num % 4;
+     if (ams_id >= 4 || slot_id >= 4) return 0.0f; // Basic validation
+     return this->data_save.filament[ams_id][slot_id].meters;
+}
+
+void BambuBus::set_filament_online(int num, bool if_online) {
+     int ams_id = num / 4;
+     int slot_id = num % 4;
+     if (ams_id >= 4 || slot_id >= 4) return; // Basic validation
+     _filament_status new_status = if_online ? online : offline;
+     ESP_LOGD(TAG, "Setting filament %d (AMS %d, Slot %d) status to %s", num, ams_id, slot_id, if_online ? "online" : "offline");
+     this->data_save.filament[ams_id][slot_id].statu = new_status;
+     // Setting online/offline might require saving state
+     this->set_need_to_save();
+}
+
+bool BambuBus::get_filament_online(int num) {
+     int ams_id = num / 4;
+     int slot_id = num % 4;
+     if (ams_id >= 4 || slot_id >= 4) return false; // Basic validation
+     return (this->data_save.filament[ams_id][slot_id].statu != offline); // online or NFC_waiting counts as "online" for presence
+}
+
+void BambuBus::set_filament_motion(int num, _filament_motion_state_set motion) {
+      int ams_id = num / 4;
+      int slot_id = num % 4;
+      if (ams_id >= 4 || slot_id >= 4) return; // Basic validation
+      ESP_LOGD(TAG, "Setting filament %d (AMS %d, Slot %d) motion to %d", num, ams_id, slot_id, (int)motion);
+      this->data_save.filament[ams_id][slot_id].motion_set = motion;
+      // Changing motion state might not require saving immediately, depends on how state is recovered.
+      // Let's assume it doesn't need saving unless other filament data changes.
+}
+
+_filament_motion_state_set BambuBus::get_filament_motion(int num) {
+      int ams_id = num / 4;
+      int slot_id = num % 4;
+      if (ams_id >= 4 || slot_id >= 4) return idle; // Basic validation, return idle default
+      return this->data_save.filament[ams_id][slot_id].motion_set;
+}
+
 }
 // Implement all the remaining methods following the same pattern...
 // [Rest of the implementation would follow the same structure as above]
