@@ -510,17 +510,17 @@ namespace bambu_bus
             switch (this->parsed_long_package.type)
             {
             case 0x21A: // MC Online?
-                ESP_LOGD(TAG, "识别到长包类型: MC Online (0x21A)");
+                ESP_LOGI(TAG, "识别到长包类型: MC Online (0x21A)");
                 return BambuBus_long_package_MC_online;
             case 0x211: // 请求耗材信息
-                ESP_LOGD(TAG, "识别到长包类型: 请求耗材信息 (0x211)");
+                ESP_LOGI(TAG, "识别到长包类型: 请求耗材信息 (0x211)");
                 return BambuBus_longe_package_filament; // <--- 返回这个，以便调用 send_for_long_packge_filament
             case 0x103:                                 // 请求版本/名称?
             case 0x402:                                 // 请求序列号?
-                ESP_LOGD(TAG, "识别到长包类型: 版本/序列号 (0x%X)", this->parsed_long_package.type);
+                ESP_LOGI(TAG, "识别到长包类型: 版本/序列号 (0x%X)", this->parsed_long_package.type);
                 return BambuBus_long_package_version;
             default:
-                ESP_LOGW(TAG, "收到未知的长包类型: 0x%03X", this->parsed_long_package.type);
+                // ESP_LOGW(TAG, "收到未知的长包类型: 0x%03X", this->parsed_long_package.type);
                 return BambuBus_package_ETC; // 其他未识别长包
             }
         }
