@@ -199,11 +199,10 @@ namespace bambu_bus
             ++_index;
             if (_index >= length)
             {
-                ESP_LOGD(TAG, "Complete frame received (%d bytes)", length);
                 // 使用 ESPHome 的 format_hex_pretty
                 std::string hexdump = esphome::format_hex_pretty(BambuBus_data_buf, length);
                 // 注意：可能需要分行打印，如果 hexdump 太长
-                ESP_LOGD(TAG, "Received Data:\n%s", hexdump.c_str());
+                ESP_LOGI(TAG, "Received Data:\n%s length (%d bytes)", hexdump.c_str(), length);
                 _index = 0;
                 memcpy(buf_X, BambuBus_data_buf, length);
                 this->BambuBus_have_data = length;
@@ -399,7 +398,7 @@ namespace bambu_bus
                 break;
 
             case BambuBus_package_ETC: // 未知但有效的短包类型
-                ESP_LOGW(TAG, "Received package (Type: BambuBus_package_ETC) - Unknown short command 0x%02X at buf[4]. No specific handler.", this->buf_X[4]);
+                // ESP_LOGW(TAG, "Received package (Type: BambuBus_package_ETC) - Unknown short command 0x%02X at buf[4]. No specific handler.", this->buf_X[4]);
                 // 这里可能不需要做任何事，或者发送一个通用的否定应答（如果协议需要）
                 break;
 
