@@ -520,7 +520,7 @@ namespace bambu_bus
                 ESP_LOGI(TAG, "识别到长包类型: 版本/序列号 (0x%X)", this->parsed_long_package.type);
                 return BambuBus_long_package_version;
             default:
-                // ESP_LOGW(TAG, "收到未知的长包类型: 0x%03X", this->parsed_long_package.type);
+                ESP_LOGI(TAG, "收到未知的长包类型: 0x%03X", this->parsed_long_package.type);
                 return BambuBus_package_ETC; // 其他未识别长包
             }
         }
