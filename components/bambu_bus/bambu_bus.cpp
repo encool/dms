@@ -231,11 +231,11 @@ namespace bambu_bus
             this->de_pin_->digital_write(true); // 激活发送 (高电平)
             // 可能需要极短的延迟确保收发器状态切换 (通常非常快)
             esphome::delayMicroseconds(5); // 示例: 5 微秒，根据硬件调整
-            ESP_LOGD(TAG, "DE pin set HIGH.");
+            ESP_LOGV(TAG, "DE pin set HIGH.");
         }
         else
         {
-            ESP_LOGD(TAG, "DE pin not configured, sending without DE control.");
+            ESP_LOGV(TAG, "DE pin not configured, sending without DE control.");
         }
 
         ESP_LOGD(TAG, "Sending %d bytes...", length);
