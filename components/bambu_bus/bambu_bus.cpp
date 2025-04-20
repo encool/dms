@@ -136,7 +136,7 @@ namespace bambu_bus
         {
             if (data == 0x3D)
             {
-                ESP_LOGD(TAG, "Start of frame detected (0x3D)");
+                ESP_LOGV(TAG, "Start of frame detected (0x3D)");
                 BambuBus_data_buf[0] = 0x3D;
                 _RX_IRQ_crcx.restart();
                 _RX_IRQ_crcx.add(0x3D);
@@ -163,20 +163,20 @@ namespace bambu_bus
                 {
                     data_length_index = 2;
                     data_CRC8_index = 3;
-                    ESP_LOGD(TAG, "Short frame format detected (bit7 set)");
+                    ESP_LOGV(TAG, "Short frame format detected (bit7 set)");
                 }
                 else
                 {
                     data_length_index = 4;
                     data_CRC8_index = 6;
-                    ESP_LOGD(TAG, "Long frame format detected");
+                    ESP_LOGV(TAG, "Long frame format detected");
                 }
             }
 
             if (_index == data_length_index)
             {
                 length = data;
-                ESP_LOGD(TAG, "Frame length set to %d bytes", length);
+                ESP_LOGV(TAG, "Frame length set to %d bytes", length);
             }
 
             if (_index < data_CRC8_index)
@@ -187,7 +187,7 @@ namespace bambu_bus
             else if (_index == data_CRC8_index)
             {
                 uint8_t crc = _RX_IRQ_crcx.calc();
-                ESP_LOGD(TAG, "CRC check: received=0x%02X, calculated=0x%02X", data, crc);
+                ESP_LOGV(TAG, "CRC check: received=0x%02X, calculated=0x%02X", data, crc);
                 if (data != crc)
                 {
                     ESP_LOGW(TAG, "CRC mismatch! Resetting frame parser");
