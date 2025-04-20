@@ -119,19 +119,21 @@ namespace bambu_bus
         uint8_t get_filament_left_char(uint8_t ams_id);
         void set_motion_res_datas(uint8_t *set_buf, uint8_t ams_id, uint8_t read_num);
         bool set_motion(uint8_t ams_id, uint8_t read_num, uint8_t statu_flags, uint8_t fliment_motion_flag);
+
+        #pragma pack(push, 1) // 将结构体按1字节对齐
         struct long_packge_data
         {
             uint16_t package_number;
-            uint16_t package_length; // Note: Original seems to have size mismatch issues? Check usage.
-            uint8_t crc8;            // Original has this but it's not clear how it's used/calculated for long packets before sending. Seems calculated later.
+            uint16_t package_length;
+            uint8_t crc8;
             uint16_t target_address;
             uint16_t source_address;
             uint16_t type;
-            // Pointer logic needs care in C++. A std::vector<uint8_t> might be safer.
-            // But sticking to original for now:
             uint8_t *datas;
             uint16_t data_length;
         };
+        #pragma pack(pop) // 恢复默认对齐
+        
         // Long package helpers
         void Bambubus_long_package_analysis(uint8_t *buf, int data_length, long_packge_data *data);
         void Bambubus_long_package_send(long_packge_data *data);
