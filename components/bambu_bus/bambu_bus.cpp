@@ -199,7 +199,7 @@ namespace bambu_bus
             ++_index;
             if (_index >= length)
             {
-                ESP_LOGI(TAG, "Complete frame received (%d bytes)", length);
+                ESP_LOGD(TAG, "Complete frame received (%d bytes)", length);
                 // 使用 ESPHome 的 format_hex_pretty
                 std::string hexdump = esphome::format_hex_pretty(BambuBus_data_buf, length);
                 // 注意：可能需要分行打印，如果 hexdump 太长
