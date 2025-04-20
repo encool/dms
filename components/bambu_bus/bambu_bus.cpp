@@ -337,29 +337,29 @@ namespace bambu_bus
 
             switch (stu)
             {
-                case BambuBus_package_heartbeat:
+            case BambuBus_package_heartbeat:
                 time_set_ = now + 1000; // 更新心跳时间戳
                 // 使用 INFO 级别记录心跳，因为它比较重要且不应过于频繁（除非有问题）
-                ESP_LOGI(TAG, "Processed package (Type: BambuBus_package_heartbeat). Timeout extended.");
+                ESP_LOGD(TAG, "Processed package (Type: BambuBus_package_heartbeat). Timeout extended.");
                 break;
 
             case BambuBus_package_filament_motion_short:
                 // ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_filament_motion_short)...");
                 this->send_for_Cxx(this->buf_X, data_length);
-                ESP_LOGI(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_short).");
+                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_short).");
                 break;
 
             case BambuBus_package_filament_motion_long:
                 // ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
                 this->send_for_Dxx(this->buf_X, data_length);
                 time_motion_ = now + 1000; // 更新运动状态时间戳
-                ESP_LOGI(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
+                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
                 break;
 
             case BambuBus_package_online_detect:
                 // ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_online_detect)...");
                 this->send_for_Fxx(this->buf_X, data_length);
-                ESP_LOGI(TAG, "Finished processing package (Type: BambuBus_package_online_detect).");
+                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_online_detect).");
                 break;
 
             case BambuBus_package_REQx6:
@@ -370,33 +370,33 @@ namespace bambu_bus
 
             case BambuBus_long_package_MC_online:
                 //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_long_package_MC_online)...");
-                 this->send_for_long_packge_MC_online(this->buf_X, data_length);
-                 ESP_LOGI(TAG, "Finished processing package (Type: BambuBus_long_package_MC_online).");
-                 break;
+                this->send_for_long_packge_MC_online(this->buf_X, data_length);
+                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_long_package_MC_online).");
+                break;
 
             case BambuBus_longe_package_filament:
                 //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_longe_package_filament)...");
-                 this->send_for_long_packge_filament(this->buf_X, data_length);
-                 ESP_LOGI(TAG, "Finished processing package (Type: BambuBus_longe_package_filament).");
-                 break;
+                this->send_for_long_packge_filament(this->buf_X, data_length);
+                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_longe_package_filament).");
+                break;
 
             case BambuBus_long_package_version:
                 //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_long_package_version)...");
-                 this->send_for_long_packge_version(this->buf_X, data_length);
-                 ESP_LOGI(TAG, "Finished processing package (Type: BambuBus_long_package_version).");
-                 break;
+                this->send_for_long_packge_version(this->buf_X, data_length);
+                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_long_package_version).");
+                break;
 
             case BambuBus_package_NFC_detect:
                 //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_NFC_detect)...");
-                 this->send_for_NFC_detect(this->buf_X, data_length); // 确保这个函数被调用
-                 ESP_LOGI(TAG, "Finished processing package (Type: BambuBus_package_NFC_detect).");
-                 break;
+                this->send_for_NFC_detect(this->buf_X, data_length); // 确保这个函数被调用
+                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_NFC_detect).");
+                break;
 
             case BambuBus_package_set_filament:
                 //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_set_filament)...");
-                 this->send_for_Set_filament(this->buf_X, data_length);
-                 ESP_LOGI(TAG, "Finished processing package (Type: BambuBus_package_set_filament).");
-                 break;
+                this->send_for_Set_filament(this->buf_X, data_length);
+                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_set_filament).");
+                break;
 
             case BambuBus_package_ETC: // 未知但有效的短包类型
                 ESP_LOGW(TAG, "Received package (Type: BambuBus_package_ETC) - Unknown short command 0x%02X at buf[4]. No specific handler.", this->buf_X[4]);
@@ -404,18 +404,18 @@ namespace bambu_bus
                 break;
 
             case BambuBus_package_NONE: // 无效包 (CRC错误或get_packge_type无法识别)
-                 ESP_LOGW(TAG, "Invalid package received (CRC mismatch or get_packge_type returned NONE).");
-                 // 可以在这里增加错误计数器或执行其他错误处理
-                 break;
+                ESP_LOGW(TAG, "Invalid package received (CRC mismatch or get_packge_type returned NONE).");
+                // 可以在这里增加错误计数器或执行其他错误处理
+                break;
 
             case BambuBus_package_ERROR: // 这个枚举值通常不由 get_packge_type 返回，而是由超时逻辑设置
-                 // 这个 case 理论上在 switch 中不会被命中，因为 stu 是由 get_packge_type 设置的
-                 ESP_LOGE(TAG, "Internal error: BambuBus_run attempting to process ERROR state in switch.");
-                 break;
+                // 这个 case 理论上在 switch 中不会被命中，因为 stu 是由 get_packge_type 设置的
+                ESP_LOGE(TAG, "Internal error: BambuBus_run attempting to process ERROR state in switch.");
+                break;
 
             default: // 捕获所有未明确处理的枚举值或意外值
-                 ESP_LOGE(TAG, "Received UNHANDLED package type value: %d. This indicates a potential issue in get_packge_type or package_type enum.", (int)stu);
-                 break;
+                ESP_LOGE(TAG, "Received UNHANDLED package type value: %d. This indicates a potential issue in get_packge_type or package_type enum.", (int)stu);
+                break;
             }
         }
 
@@ -492,8 +492,37 @@ namespace bambu_bus
         }
         else if (buf[1] == 0x05)
         {
-            // Long package handling would go here
-            return BambuBus_package_ETC;
+            // 解析长包头信息 (填充到成员变量 parsed_long_package 中)
+            // 注意：这里调用分析函数来填充 this->parsed_long_package
+            this->Bambubus_long_package_analysis(buf, length, &this->parsed_long_package);
+
+            // 更新设备地址 (如果需要，根据原始逻辑)
+            if (this->parsed_long_package.target_address == 0x0700 || this->parsed_long_package.target_address == 0x1200)
+            {
+                if (this->BambuBus_address != this->parsed_long_package.target_address)
+                {
+                    ESP_LOGI(TAG, "更新 BambuBus 地址为 0x%04X (来自长包目标地址)", this->parsed_long_package.target_address);
+                    this->BambuBus_address = this->parsed_long_package.target_address;
+                }
+            }
+
+            // 根据解析出的长包类型 (type 字段) 返回正确的枚举值
+            switch (this->parsed_long_package.type)
+            {
+            case 0x21A: // MC Online?
+                ESP_LOGD(TAG, "识别到长包类型: MC Online (0x21A)");
+                return BambuBus_long_package_MC_online;
+            case 0x211: // 请求耗材信息
+                ESP_LOGD(TAG, "识别到长包类型: 请求耗材信息 (0x211)");
+                return BambuBus_longe_package_filament; // <--- 返回这个，以便调用 send_for_long_packge_filament
+            case 0x103:                                 // 请求版本/名称?
+            case 0x402:                                 // 请求序列号?
+                ESP_LOGD(TAG, "识别到长包类型: 版本/序列号 (0x%X)", this->parsed_long_package.type);
+                return BambuBus_long_package_version;
+            default:
+                ESP_LOGW(TAG, "收到未知的长包类型: 0x%03X", this->parsed_long_package.type);
+                return BambuBus_package_ETC; // 其他未识别长包
+            }
         }
 
         return BambuBus_package_NONE;
