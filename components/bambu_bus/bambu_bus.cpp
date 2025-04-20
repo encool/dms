@@ -202,7 +202,7 @@ namespace bambu_bus
                 // 使用 ESPHome 的 format_hex_pretty
                 std::string hexdump = esphome::format_hex_pretty(BambuBus_data_buf, length);
                 // 注意：可能需要分行打印，如果 hexdump 太长
-                ESP_LOGI(TAG, "Received Data:\n%s length (%d bytes)", hexdump.c_str(), length);
+                ESP_LOGD(TAG, "Received Data:\n%s length (%d bytes)", hexdump.c_str(), length);
                 _index = 0;
                 memcpy(buf_X, BambuBus_data_buf, length);
                 this->BambuBus_have_data = length;
