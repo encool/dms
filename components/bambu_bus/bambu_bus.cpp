@@ -299,24 +299,24 @@ package_type BambuBus::BambuBus_run() {
                 break;
             case BambuBus_package_REQx6:
                  ESP_LOGW(TAG, "REQx6 received, but handler is not fully implemented.");
-                // this->send_for_REQx6(this->buf_X, data_length); // 如果要实现的话
+                this->send_for_REQx6(this->buf_X, data_length); // 如果要实现的话
                 break;
             case BambuBus_long_package_MC_online:
                  ESP_LOGW(TAG, "Long MC Online received, but handler might need review.");
-                // this->send_for_long_packge_MC_online(this->buf_X, data_length);
+                this->send_for_long_packge_MC_online(this->buf_X, data_length);
                 break;
             // ... (处理其他 case) ...
              case BambuBus_longe_package_filament:
                  ESP_LOGW(TAG, "Long filament info received, but handler might need review.");
-                // this->send_for_long_packge_filament(this->buf_X, data_length);
+                this->send_for_long_packge_filament(this->buf_X, data_length);
                  break;
              case BambuBus_long_package_version:
                   ESP_LOGW(TAG, "Long version info received, but handler might need review.");
-                // this->send_for_long_packge_version(this->buf_X, data_length);
+                this->send_for_long_packge_version(this->buf_X, data_length);
                  break;
              case BambuBus_package_NFC_detect:
                   ESP_LOGW(TAG, "NFC detect received, but handler might need review.");
-                 // this->send_for_NFC_detect(this->buf_X, data_length);
+                 this->send_for_NFC_detect(this->buf_X, data_length);
                  break;
              case BambuBus_package_set_filament:
                   ESP_LOGI(TAG, "Set filament received.");
