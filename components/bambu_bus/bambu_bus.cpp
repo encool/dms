@@ -103,7 +103,7 @@ namespace bambu_bus
             {
                 j.statu = online;
                 // j.motion_set = idle;
-                j.motion_set = need_send_out
+                j.motion_set = need_send_out;
             }
         }
     }
