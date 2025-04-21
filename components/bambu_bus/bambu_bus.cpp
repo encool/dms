@@ -900,7 +900,7 @@ namespace bambu_bus
                 filament_flag_NFC |= (1 << i);
             }
         }
-        ESP_LOGV(TAG, "Filament presence flags for AMS %d: on=0x%02X, nfc_wait=0x%02X", request_ams_num, filament_flag_on, filament_flag_NFC);
+        ESP_LOGD(TAG, "Filament presence flags for AMS %d: on=0x%02X, nfc_wait=0x%02X", request_ams_num, filament_flag_on, filament_flag_NFC);
 
         // Update filament motion state based on the request
         if (!this->set_motion(request_ams_num, request_read_num, request_statu_flags, request_motion_flag))
