@@ -102,7 +102,8 @@ namespace bambu_bus
             for (auto &j : i)
             {
                 j.statu = online;
-                j.motion_set = idle;
+                // j.motion_set = idle;
+                j.motion_set = need_send_out
             }
         }
     }
@@ -307,9 +308,9 @@ namespace bambu_bus
 
         if (this->need_debug)
         {
-            ESP_LOGD(TAG, "Prepared package to send (%d bytes):", data_length);
+            // ESP_LOGD(TAG, "Prepared package to send (%d bytes):", data_length);
             // 使用 format_hex_pretty 打印准备发送的数据（需要包含 esphome/core/helpers.h）
-            ESP_LOGD(TAG, "  %s", esphome::format_hex_pretty(data, data_length).c_str());
+            // ESP_LOGD(TAG, "  %s", esphome::format_hex_pretty(data, data_length).c_str());
         }
         // send_uart(data, data_length);
         // 调用新函数以使用 DE 控制进行发送
@@ -684,6 +685,7 @@ namespace bambu_bus
             }
             // Else (address 0x00 or unknown), meters remain 0
         }
+        meters = 22.0f;
 
         set_buf[0] = ams_id;                          // Corresponds to original Cxx_res[5]
         set_buf[1] = 0x00;                            // Original Cxx_res[6], seems unused/padding? Set to 0 based on template.
