@@ -59,7 +59,7 @@ namespace bambu_bus
 
     void BambuBus::BambuBus_init()
     {
-        ESP_LOGI(BambuBus::TAG, "Setup started BambuBus_init");
+        ESP_LOGCONFIG(BambuBus::TAG, "Setup started BambuBus_init");
         bool _init_ready = Bambubus_read();
 
         if (!_init_ready)
@@ -92,13 +92,16 @@ namespace bambu_bus
                 }
             }
         }
-
+        else
+        {
+            ESP_LOGCONFIG(TAG, "成功从 Preferences 加载数据。");
+        }
         // Set initial status
         for (auto &i : data_save.filament)
         {
             for (auto &j : i)
             {
-                j.statu = offline;
+                j.statu = online;
                 j.motion_set = idle;
             }
         }
@@ -873,7 +876,7 @@ namespace bambu_bus
     void BambuBus::send_for_Dxx(uint8_t *buf, int length)
     {
         ESP_LOGD(TAG, "Processing Dxx (Long Motion) request");
-
+        // 3D.C5.0D.F1.04.00.01.00.03.FF.00.B2.C4 (13) length (13 bytes)
         // Extract data from request buffer
         uint8_t request_ams_num = buf[5];
         uint8_t request_statu_flags = buf[6];
