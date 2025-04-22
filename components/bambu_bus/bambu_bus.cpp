@@ -343,63 +343,64 @@ namespace bambu_bus
             {
             case BambuBus_package_heartbeat:
                 time_set_ = now + 1000; // 更新心跳时间戳
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_heartbeat)...");
                 // 使用 INFO 级别记录心跳，因为它比较重要且不应过于频繁（除非有问题）
-                ESP_LOGD(TAG, "Processed package (Type: BambuBus_package_heartbeat). Timeout extended.");
+                // ESP_LOGD(TAG, "Processed package (Type: BambuBus_package_heartbeat). Timeout extended.");
                 break;
 
             case BambuBus_package_filament_motion_short:
-                // ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_filament_motion_short)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_short)...");
                 this->send_for_Cxx(this->buf_X, data_length);
-                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_short).");
+                // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_short).");
                 break;
 
             case BambuBus_package_filament_motion_long:
-                // ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
                 this->send_for_Dxx(this->buf_X, data_length);
                 time_motion_ = now + 1000; // 更新运动状态时间戳
-                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
+                // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
                 break;
 
             case BambuBus_package_online_detect:
-                // ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_online_detect)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_online_detect)...");
                 this->send_for_Fxx(this->buf_X, data_length);
-                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_online_detect).");
+                // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_online_detect).");
                 break;
 
             case BambuBus_package_REQx6:
-                ESP_LOGW(TAG, "Received package (Type: BambuBus_package_REQx6), but handler is not fully implemented.");
+                ESP_LOGW(TAG, "Processing package (Type: BambuBus_package_REQx6), but handler is not fully implemented.");
                 // this->send_for_REQx6(this->buf_X, data_length); // 如果要实现的话
                 // ESP_LOGW(TAG, "Finished processing package (Type: BambuBus_package_REQx6)."); // 记录完成，即使未完全处理
                 break;
 
             case BambuBus_long_package_MC_online:
-                //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_long_package_MC_online)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_long_package_MC_online)...");
                 this->send_for_long_packge_MC_online(this->buf_X, data_length);
-                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_long_package_MC_online).");
+                // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_long_package_MC_online).");
                 break;
 
             case BambuBus_longe_package_filament:
-                //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_longe_package_filament)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_longe_package_filament)...");
                 this->send_for_long_packge_filament(this->buf_X, data_length);
-                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_longe_package_filament).");
+                // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_longe_package_filament).");
                 break;
 
             case BambuBus_long_package_version:
-                //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_long_package_version)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_long_package_version)...");
                 this->send_for_long_packge_version(this->buf_X, data_length);
-                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_long_package_version).");
+                // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_long_package_version).");
                 break;
 
             case BambuBus_package_NFC_detect:
-                //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_NFC_detect)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_NFC_detect)...");
                 this->send_for_NFC_detect(this->buf_X, data_length); // 确保这个函数被调用
-                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_NFC_detect).");
+                // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_NFC_detect).");
                 break;
 
             case BambuBus_package_set_filament:
-                //  ESP_LOGI(TAG, "Processing package (Type: BambuBus_package_set_filament)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_set_filament)...");
                 this->send_for_Set_filament(this->buf_X, data_length);
-                ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_set_filament).");
+                // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_set_filament).");
                 break;
 
             case BambuBus_package_ETC: // 未知但有效的短包类型
