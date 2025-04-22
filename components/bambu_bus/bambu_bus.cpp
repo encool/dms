@@ -905,7 +905,8 @@ namespace bambu_bus
             }
         }
         ESP_LOGD(TAG, "Filament presence flags for AMS %d: on=0x%02X, nfc_wait=0x%02X", request_ams_num, filament_flag_on, filament_flag_NFC);
-
+        ESP_LOGD(TAG, "set_motion from Dxx - request_ams_num=%d, request_read_num=%d, request_statu_flags=0x%02X, request_motion_flag=0x%02X",
+            request_ams_num, request_read_num, request_statu_flags, request_motion_flag);
         // Update filament motion state based on the request
         if (!this->set_motion(request_ams_num, request_read_num, request_statu_flags, request_motion_flag))
         {
@@ -915,30 +916,30 @@ namespace bambu_bus
 
         // Prepare the response using the Dxx_res template
         // Create a temporary buffer
-        uint8_t temp_Dxx_res[sizeof(this->Dxx_res)];
-        memcpy(temp_Dxx_res, this->Dxx_res, sizeof(this->Dxx_res));
+        // uint8_t temp_Dxx_res[sizeof(this->Dxx_res)];
+        // memcpy(temp_Dxx_res, this->Dxx_res, sizeof(this->Dxx_res));
 
         // Modify the header byte 1: Set sequence number
-        temp_Dxx_res[1] = 0xC0 | (this->package_num << 3);
+        Dxx_res[1] = 0xC0 | (this->package_num << 3);
 
         // --- Populate dynamic fields in the response template ---
-        temp_Dxx_res[5] = request_ams_num; // AMS number
+        Dxx_res[5] = request_ams_num; // AMS number
 
         // Bytes 9, 10, 11: Filament presence flags
-        temp_Dxx_res[9] = filament_flag_on;
-        temp_Dxx_res[10] = filament_flag_on - filament_flag_NFC; // Filaments present AND have tag read (on & !nfc_wait)
-        temp_Dxx_res[11] = filament_flag_on - filament_flag_NFC; // Seems duplicated in original? Keep it for compatibility.
+        Dxx_res[9] = filament_flag_on;
+        Dxx_res[10] = filament_flag_on - filament_flag_NFC; // Filaments present AND have tag read (on & !nfc_wait)
+        Dxx_res[11] = filament_flag_on - filament_flag_NFC; // Seems duplicated in original? Keep it for compatibility.
 
         // Byte 12: Currently selected/active filament slot index
-        temp_Dxx_res[12] = request_read_num;
+        Dxx_res[12] = request_read_num;
 
         // Byte 13: Filaments waiting for NFC scan flag
-        temp_Dxx_res[13] = filament_flag_NFC;
+        Dxx_res[13] = filament_flag_NFC;
 
         // Bytes 17 onwards: Motion related data (filled by set_motion_res_datas)
         // The data starts at offset 17 in Dxx_res template.
         // Need to call set_motion_res_datas on the correct sub-buffer.
-        this->set_motion_res_datas(temp_Dxx_res + 17, request_ams_num, request_read_num);
+        this->set_motion_res_datas(Dxx_res + 17, request_ams_num, request_read_num);
 
         // Handle the NFC detection flag logic from original code (last_detect)
         // This part seems to indicate if an NFC scan was recently requested/occurred.
@@ -947,13 +948,13 @@ namespace bambu_bus
             // Original logic seems complex/unclear. Let's simplify or comment out if unsure.
             // It seems to set flags at temp_Dxx_res[19] and possibly temp_Dxx_res[20] based on last_detect counter.
             // temp_Dxx_res[19] seems to be a general "NFC recently active" flag.
-            temp_Dxx_res[19] = 0x01; // Indicate recent NFC activity
+            Dxx_res[19] = 0x01; // Indicate recent NFC activity
             if (this->last_detect <= 10)
             { // If detection was very recent?
                 // Original sets byte 12 and 20 to the detected filament flag. Overwrites read_num? Risky.
                 // Let's just set byte 20 as it seems less critical than byte 12.
                 // Byte 20 corresponds to the start of C_test data within Dxx_res (Dxx_res[17] is start). So offset 3 within C_test.
-                temp_Dxx_res[20] = this->filament_flag_detected; // Store which slot was detected
+                Dxx_res[20] = this->filament_flag_detected; // Store which slot was detected
                 ESP_LOGD(TAG, "NFC detection flag active, slot detected: 0x%02X", this->filament_flag_detected);
             }
             this->last_detect--; // Decrement counter
@@ -967,8 +968,8 @@ namespace bambu_bus
         }
 
         // Send the prepared response package
-        ESP_LOGD(TAG, "Sending Dxx response (%d bytes)", (int)sizeof(temp_Dxx_res));
-        this->package_send_with_crc(temp_Dxx_res, sizeof(temp_Dxx_res));
+        ESP_LOGD(TAG, "Sending Dxx response (%d bytes)", (int)sizeof(Dxx_res));
+        this->package_send_with_crc(Dxx_res, sizeof(Dxx_res));
 
         // Increment package number
         if (this->package_num < 7)
