@@ -576,21 +576,24 @@ namespace bambu_bus
             { // 检查槽位索引是否有效
                 ESP_LOGD(TAG, "Handling Fxx sub-command 0x01 (request slot %d)", slot_index);
 
-                // !! 重要：创建一个临时缓冲区来修改，不要直接修改 this->F01_res !!
-                uint8_t temp_F01_res[sizeof(this->F01_res)];
-                memcpy(temp_F01_res, this->F01_res, sizeof(this->F01_res));
+                // // !! 重要：创建一个临时缓冲区来修改，不要直接修改 this->F01_res !!
+                // uint8_t temp_F01_res[sizeof(this->F01_res)];
+                // memcpy(temp_F01_res, this->F01_res, sizeof(this->F01_res));
 
-                // 1. 根据原始代码，将请求 buf 中的 3 个字节 (偏移量4,5,6) 复制到响应的偏移量 4,5,6
-                //    原始代码: memcpy(F01_res + 4, buf + 4, 3);
-                memcpy(temp_F01_res + 4, buf + 4, 3);
-                ESP_LOGV(TAG, "  Copied 3 bytes [0x%02X, 0x%02X, 0x%02X] from request (offset 4) to response template",
-                         buf[4], buf[5], buf[6]);
+                // // 1. 根据原始代码，将请求 buf 中的 3 个字节 (偏移量4,5,6) 复制到响应的偏移量 4,5,6
+                // //    原始代码: memcpy(F01_res + 4, buf + 4, 3);
+                // memcpy(temp_F01_res + 4, buf + 4, 3);
+                // ESP_LOGV(TAG, "  Copied 3 bytes [0x%02X, 0x%02X, 0x%02X] from request (offset 4) to response template",
+                //          buf[4], buf[5], buf[6]);
 
-                // 2. 原始代码中关于 online_detect_num 的部分被注释掉了，所以这里不需要做处理
+                // // 2. 原始代码中关于 online_detect_num 的部分被注释掉了，所以这里不需要做处理
 
-                // 3. 发送修改后的单个响应包
-                ESP_LOGD(TAG, "Sending single F01 response for slot %d (%d bytes)", slot_index, (int)sizeof(temp_F01_res));
-                this->package_send_with_crc(temp_F01_res, sizeof(temp_F01_res));
+                // // 3. 发送修改后的单个响应包
+                // ESP_LOGD(TAG, "Sending single F01 response for slot %d (%d bytes)", slot_index, (int)sizeof(temp_F01_res));
+
+                memcpy(F01_res + 4, buf + 4, 3);
+
+                this->package_send_with_crc(F01_res, sizeof(F01_res));
             }
             else
             {
