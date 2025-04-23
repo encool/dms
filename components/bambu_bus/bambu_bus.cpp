@@ -535,79 +535,33 @@ namespace bambu_bus
 
     void BambuBus::send_for_Fxx(uint8_t *buf, int length)
     {
-        ESP_LOGD(TAG, "Processing Fxx (Online Detect) request. buf[5]=0x%02X", buf[5]);
-
-        // --- 处理子命令 0x00: 请求所有插槽信息 ---
-        if (buf[5] == 0x00)
+        uint8_t F00_res[4 * sizeof(F01_res)];
+        if ((buf[5] == 0x00))
         {
-            ESP_LOGD(TAG, "Handling Fxx sub-command 0x00 (request all slots)");
-
-            // 创建一个足够大的缓冲区来容纳 4 个响应包
-            uint8_t F00_res[4 * sizeof(this->F01_res)]; // 大小为 4 * 29 = 116 字节
-
-            // 循环填充每个槽位的响应数据
-            for (int i = 0; i < 4; i++)
+            // if((buf[8]==0x30)&&(buf[9]==0x31));
+            for (auto i = 0; i < 4; i++)
             {
-                // 计算当前响应在 F00_res 中的起始位置
-                uint8_t *current_res_ptr = F00_res + i * sizeof(this->F01_res);
-
-                // 1. 复制基础模板 F01_res 到 F00_res 的对应位置
-                memcpy(current_res_ptr, this->F01_res, sizeof(this->F01_res));
-
-                // 2. 修改复制后的数据 (根据原始代码逻辑)
-                current_res_ptr[5] = 0; // 字段含义未知，可能是 AMS 索引?
-                current_res_ptr[6] = i; // 设置槽位索引
-                current_res_ptr[7] = i; // 再次设置槽位索引? 或状态?
-
-                ESP_LOGV(TAG, "  Prepared response part for slot %d", i);
+                memcpy(F00_res + i * sizeof(F01_res), F01_res, sizeof(F01_res));
+                F00_res[i * sizeof(F01_res) + 5] = 0;
+                F00_res[i * sizeof(F01_res) + 6] = i;
+                F00_res[i * sizeof(F01_res) + 7] = i;
             }
-
-            // 3. 发送包含 4 个响应的组合数据包
-            ESP_LOGD(TAG, "Sending combined F00 response (%d bytes)", (int)sizeof(F00_res));
-            this->package_send_with_crc(F00_res, sizeof(F00_res)); // 发送整个 F00_res
-
-            // --- 处理子命令 0x01: 请求特定插槽信息 ---
+            package_send_with_crc(F00_res, sizeof(F00_res));
         }
-        else if (buf[5] == 0x01)
+
+        if ((buf[5] == 0x01) && (buf[6] < 4))
         {
-            uint8_t slot_index = buf[6]; // 获取请求的槽位索引
-
-            if (slot_index < 4)
-            { // 检查槽位索引是否有效
-                ESP_LOGD(TAG, "Handling Fxx sub-command 0x01 (request slot %d)", slot_index);
-
-                // // !! 重要：创建一个临时缓冲区来修改，不要直接修改 this->F01_res !!
-                // uint8_t temp_F01_res[sizeof(this->F01_res)];
-                // memcpy(temp_F01_res, this->F01_res, sizeof(this->F01_res));
-
-                // // 1. 根据原始代码，将请求 buf 中的 3 个字节 (偏移量4,5,6) 复制到响应的偏移量 4,5,6
-                // //    原始代码: memcpy(F01_res + 4, buf + 4, 3);
-                // memcpy(temp_F01_res + 4, buf + 4, 3);
-                // ESP_LOGV(TAG, "  Copied 3 bytes [0x%02X, 0x%02X, 0x%02X] from request (offset 4) to response template",
-                //          buf[4], buf[5], buf[6]);
-
-                // // 2. 原始代码中关于 online_detect_num 的部分被注释掉了，所以这里不需要做处理
-
-                // // 3. 发送修改后的单个响应包
-                // ESP_LOGD(TAG, "Sending single F01 response for slot %d (%d bytes)", slot_index, (int)sizeof(temp_F01_res));
-
-                memcpy(F01_res + 4, buf + 4, 3);
-
-                this->package_send_with_crc(F01_res, sizeof(F01_res));
-            }
+            memcpy(F01_res + 4, buf + 4, 3);
+            // memcpy(F00_res + 8, online_detect_num, sizeof(online_detect_num));
+            /*
+            if (buf[6])
+                memcpy(F00_res + 8, online_detect_num, sizeof(online_detect_num));
             else
-            {
-                // 如果请求的槽位索引无效
-                ESP_LOGW(TAG, "Received Fxx sub-command 0x01 with invalid slot index: %d. No response sent.", slot_index);
-                // 原始代码对无效索引没有响应，这里也保持一致
-            }
-
-            // --- 处理未知的子命令 ---
-        }
-        else
-        {
-            ESP_LOGW(TAG, "Received Fxx with unknown sub-command: 0x%02X. No response sent.", buf[5]);
-            // 原始代码对未知子命令没有响应，这里也保持一致
+                memcpy(F00_res + 8, online_detect_num2, sizeof(online_detect_num2));*/
+            // memcpy(online_detect_num, buf + 8, sizeof(online_detect_num));
+            //  F00_res[5] = buf[5];
+            //  F00_res[6] = buf[6];
+            package_send_with_crc(F01_res, sizeof(F01_res));
         }
     }
 
@@ -882,111 +836,73 @@ namespace bambu_bus
 
     void BambuBus::send_for_Dxx(uint8_t *buf, int length)
     {
-        ESP_LOGD(TAG, "Processing Dxx (Long Motion) request");
-        // 3D.C5.0D.F1.04.00.01.00.03.FF.00.B2.C4 (13) length (13 bytes)
-        // Extract data from request buffer
-        uint8_t request_ams_num = buf[5];
-        uint8_t request_statu_flags = buf[6];
-        uint8_t request_motion_flag = buf[7]; // Note: Index differs from Cxx
-        // buf[8] seems unused in original logic for Dxx state setting?
-        uint8_t request_read_num = buf[9]; // Filament slot index
+        unsigned char filament_flag_on = 0x00;
+        unsigned char filament_flag_NFC = 0x00;
+        unsigned char AMS_num = buf[5];
+        unsigned char statu_flags = buf[6];
+        unsigned char fliment_motion_flag = buf[7];
+        unsigned char read_num = buf[9];
 
-        // Determine which filaments are present (online or NFC_waiting) in the requested AMS unit
-        uint8_t filament_flag_on = 0x00;  // Bitmask of present filaments
-        uint8_t filament_flag_NFC = 0x00; // Bitmask of filaments waiting for NFC scan (subset of filament_flag_on)
         for (auto i = 0; i < 4; i++)
         {
-            _filament_status slot_status = this->data_save.filament[request_ams_num][i].statu;
-            if (slot_status == online)
+            // filament[i].meters;
+            if (data_save.filament[AMS_num][i].statu == online)
             {
-                filament_flag_on |= (1 << i);
+                filament_flag_on |= 1 << i;
             }
-            else if (slot_status == NFC_waiting)
+            else if (data_save.filament[AMS_num][i].statu == NFC_waiting)
             {
-                filament_flag_on |= (1 << i);
-                filament_flag_NFC |= (1 << i);
+                filament_flag_on |= 1 << i;
+                filament_flag_NFC |= 1 << i;
             }
         }
-        ESP_LOGD(TAG, "Filament presence flags for AMS %d: on=0x%02X, nfc_wait=0x%02X", request_ams_num, filament_flag_on, filament_flag_NFC);
-        ESP_LOGD(TAG, "set_motion from Dxx - request_ams_num=%d, request_read_num=%d, request_statu_flags=0x%02X, request_motion_flag=0x%02X",
-            request_ams_num, request_read_num, request_statu_flags, request_motion_flag);
-        // Update filament motion state based on the request
-        if (!this->set_motion(request_ams_num, request_read_num, request_statu_flags, request_motion_flag))
-        {
-            ESP_LOGE(TAG, "Failed to set motion state based on Dxx request. No response sent.");
+        if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
             return;
-        }
-
-        // Prepare the response using the Dxx_res template
-        // Create a temporary buffer
-        // uint8_t temp_Dxx_res[sizeof(this->Dxx_res)];
-        // memcpy(temp_Dxx_res, this->Dxx_res, sizeof(this->Dxx_res));
-
-        // Modify the header byte 1: Set sequence number
-        Dxx_res[1] = 0xC0 | (this->package_num << 3);
-
-        // --- Populate dynamic fields in the response template ---
-        Dxx_res[5] = request_ams_num; // AMS number
-
-        // Bytes 9, 10, 11: Filament presence flags
-        Dxx_res[9] = filament_flag_on;
-        Dxx_res[10] = filament_flag_on - filament_flag_NFC; // Filaments present AND have tag read (on & !nfc_wait)
-        Dxx_res[11] = filament_flag_on - filament_flag_NFC; // Seems duplicated in original? Keep it for compatibility.
-
-        // Byte 12: Currently selected/active filament slot index
-        Dxx_res[12] = request_read_num;
-
-        // Byte 13: Filaments waiting for NFC scan flag
-        Dxx_res[13] = filament_flag_NFC;
-
-        // Bytes 17 onwards: Motion related data (filled by set_motion_res_datas)
-        // The data starts at offset 17 in Dxx_res template.
-        // Need to call set_motion_res_datas on the correct sub-buffer.
-        this->set_motion_res_datas(Dxx_res + 17, request_ams_num, request_read_num);
-
-        // Handle the NFC detection flag logic from original code (last_detect)
-        // This part seems to indicate if an NFC scan was recently requested/occurred.
-        if (this->last_detect > 0)
+        /*if (need_res_for_06)
         {
-            // Original logic seems complex/unclear. Let's simplify or comment out if unsure.
-            // It seems to set flags at temp_Dxx_res[19] and possibly temp_Dxx_res[20] based on last_detect counter.
-            // temp_Dxx_res[19] seems to be a general "NFC recently active" flag.
-            Dxx_res[19] = 0x01; // Indicate recent NFC activity
-            if (this->last_detect <= 10)
-            { // If detection was very recent?
-                // Original sets byte 12 and 20 to the detected filament flag. Overwrites read_num? Risky.
-                // Let's just set byte 20 as it seems less critical than byte 12.
-                // Byte 20 corresponds to the start of C_test data within Dxx_res (Dxx_res[17] is start). So offset 3 within C_test.
-                Dxx_res[20] = this->filament_flag_detected; // Store which slot was detected
-                ESP_LOGD(TAG, "NFC detection flag active, slot detected: 0x%02X", this->filament_flag_detected);
-            }
-            this->last_detect--; // Decrement counter
-            if (this->last_detect == 0)
+            Dxx_res2[1] = 0xC0 | (package_num << 3);
+            Dxx_res2[9] = filament_flag_on;
+            Dxx_res2[10] = filament_flag_on - filament_flag_NFC;
+            Dxx_res2[11] = filament_flag_on - filament_flag_NFC;
+            Dxx_res[19] = flagx;
+            Dxx_res[20] = Dxx_res2[12] = res_for_06_num;
+            Dxx_res2[13] = filament_flag_NFC;
+            Dxx_res2[41] = get_filament_left_char();
+            package_send_with_crc(Dxx_res2, sizeof(Dxx_res2));
+            need_res_for_06 = false;
+        }
+        else*/
+
+        {
+            Dxx_res[1] = 0xC0 | (package_num << 3);
+            Dxx_res[5] = AMS_num;
+            Dxx_res[9] = filament_flag_on;
+            Dxx_res[10] = filament_flag_on - filament_flag_NFC;
+            Dxx_res[11] = filament_flag_on - filament_flag_NFC;
+            Dxx_res[12] = read_num;
+            Dxx_res[13] = filament_flag_NFC;
+
+            set_motion_res_datas(Dxx_res + 17, AMS_num, read_num);
+        }
+        if (last_detect != 0)
+        {
+            if (last_detect > 10)
             {
-                ESP_LOGD(TAG, "NFC detection flag timed out.");
-                // Reset flag? Original code doesn't explicitly reset temp_Dxx_res[19] here.
-                // It might rely on the template value being 0. Check Dxx_res template.
-                // Dxx_res[19] (offset 2 in C_test) is 0 in the provided template. Okay.
+                Dxx_res[19] = 0x01;
             }
+            else
+            {
+                Dxx_res[12] = filament_flag_detected;
+                Dxx_res[19] = 0x01;
+                Dxx_res[20] = filament_flag_detected;
+            }
+            last_detect--;
         }
-
-        // Send the prepared response package
-        ESP_LOGD(TAG, "Sending Dxx response (%d bytes)", (int)sizeof(Dxx_res));
-        this->package_send_with_crc(Dxx_res, sizeof(Dxx_res));
-
-        // Increment package number
-        if (this->package_num < 7)
-        {
-            this->package_num++;
-        }
+        package_send_with_crc(Dxx_res, sizeof(Dxx_res));
+        if (package_num < 7)
+            package_num++;
         else
-        {
-            this->package_num = 0;
-        }
-
-        // Reset the need_res_for_06 flag if it was set (original code had complex interaction here)
-        // Since REQx6 is mostly commented out, we might not need this logic.
-        this->need_res_for_06 = false;
+            package_num = 0;
     }
 
     // In bambu_bus.cpp
