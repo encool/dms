@@ -239,11 +239,19 @@ namespace bambu_bus
         0xC1, 0xC3, 0xEC, 0xBC,
         0x01, 0x01, 0x01, 0x01,
         */
+        // unsigned char Dxx_res[62] = {0x3D, 0xE0, 0x3C, 0x1A, 0x04,
+        //                              0x00, //[5]AMS num
+        //                              0x01,
+        //                              0x01,
+        //                              1,                      // humidity wet
+        //                              0x04, 0x04, 0x04, 0xFF, // flags
+        //                              0x00, 0x00, 0x00, 0x00,
+        //                              C_test 0x00, 0x00, 0x00, 0x00,
+        //                              0xFF, 0xFF, 0xFF, 0xFF,
+        //                              0x90, 0xE4};
+        // from fake ams lite
         unsigned char Dxx_res[62] = {0x3D, 0xE0, 0x3C, 0x1A, 0x04,
-                                     0x00, //[5]AMS num
-                                     0x01,
-                                     0x01,
-                                     1,                      // humidity wet
+                                     0x00, 0x75, 0x01, 0x11,
                                      0x04, 0x04, 0x04, 0xFF, // flags
                                      0x00, 0x00, 0x00, 0x00,
                                      C_test 0x00, 0x00, 0x00, 0x00,
