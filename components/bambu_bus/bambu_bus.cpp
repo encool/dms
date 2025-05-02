@@ -603,7 +603,7 @@ namespace bambu_bus
     }
 
     // Helper function from original code, make it a private member method
-    void BambuBus::set_motion_res_datas(uint8_t *set_buf, uint8_t ams_id, uint8_t read_num)
+    void BambuBus::set_motion_res_datas(uint8_t *set_buf, uint8_t AMS_num, uint8_t read_num)
     {
         // unsigned char statu_flags = buf[6];
 
