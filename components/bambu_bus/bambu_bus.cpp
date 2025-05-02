@@ -535,8 +535,8 @@ namespace bambu_bus
             {
                 memcpy(F00_res + i * sizeof(F01_res), F01_res, sizeof(F01_res));
                 F00_res[i * sizeof(F01_res) + 5] = 0;
-                F00_res[i * sizeof(F01_res) + 6] = i;
-                F00_res[i * sizeof(F01_res) + 7] = i;
+                // F00_res[i * sizeof(F01_res) + 6] = i;
+                // F00_res[i * sizeof(F01_res) + 7] = i;
             }
             package_send_with_crc(F00_res, sizeof(F00_res));
         }
