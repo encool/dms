@@ -356,8 +356,8 @@ namespace bambu_bus
 
             case BambuBus_package_filament_motion_long:
                 ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
-                this->send_for_Dxx(this->buf_X, data_length);
-                time_motion_ = now + 1000; // 更新运动状态时间戳
+                // this->send_for_Dxx(this->buf_X, data_length);
+                // time_motion_ = now + 1000; // 更新运动状态时间戳
                 // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
                 break;
 
@@ -857,8 +857,16 @@ namespace bambu_bus
                 filament_flag_NFC |= 1 << i;
             }
         }
+        ESP_LOGD(TAG, "Filament presence flags for AMS %d: on=0x%02X, nfc_wait=0x%02X", request_ams_num, filament_flag_on, filament_flag_NFC);
+        ESP_LOGD(TAG, "set_motion from Dxx - request_ams_num=%d, request_read_num=%d, request_statu_flags=0x%02X, request_motion_flag=0x%02X",
+                 request_ams_num, request_read_num, request_statu_flags, request_motion_flag);
+
         if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
+        {
+            ESP_LOGE(TAG, "Failed to set motion state based on Dxx request. No response sent.");
             return;
+        }
+
         /*if (need_res_for_06)
         {
             Dxx_res2[1] = 0xC0 | (package_num << 3);
