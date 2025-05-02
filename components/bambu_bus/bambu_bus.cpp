@@ -608,7 +608,7 @@ namespace bambu_bus
         // unsigned char statu_flags = buf[6];
 
         // unsigned char fliment_motion_flag = buf[8];
-        float meters = 0;
+        float meters = 1;
         uint8_t flagx = 0x02;
         if (read_num != 0xFF)
         {
