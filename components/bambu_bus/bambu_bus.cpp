@@ -364,8 +364,8 @@ namespace bambu_bus
                 break;
 
             case BambuBus_package_online_detect:
-                // ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_online_detect)...");
-                // this->send_for_Fxx(this->buf_X, data_length);
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_online_detect)...");
+                this->send_for_Fxx(this->buf_X, data_length);
                 // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_online_detect).");
                 break;
 
