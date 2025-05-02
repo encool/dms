@@ -857,9 +857,9 @@ namespace bambu_bus
                 filament_flag_NFC |= 1 << i;
             }
         }
-        ESP_LOGD(TAG, "Filament presence flags for AMS %d: on=0x%02X, nfc_wait=0x%02X", request_ams_num, filament_flag_on, filament_flag_NFC);
+        ESP_LOGD(TAG, "Filament presence flags for AMS %d: on=0x%02X, nfc_wait=0x%02X", AMS_num, filament_flag_on, filament_flag_NFC);
         ESP_LOGD(TAG, "set_motion from Dxx - request_ams_num=%d, request_read_num=%d, request_statu_flags=0x%02X, request_motion_flag=0x%02X",
-                 request_ams_num, request_read_num, request_statu_flags, request_motion_flag);
+                 AMS_num, read_num, statu_flags, fliment_motion_flag);
 
         if (!set_motion(AMS_num, read_num, statu_flags, fliment_motion_flag))
         {
