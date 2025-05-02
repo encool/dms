@@ -355,7 +355,7 @@ namespace bambu_bus
                 break;
 
             case BambuBus_package_filament_motion_long:
-                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
+                // ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
                 // this->send_for_Dxx(this->buf_X, data_length);
                 // time_motion_ = now + 1000; // 更新运动状态时间戳
                 // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
