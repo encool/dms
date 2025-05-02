@@ -585,7 +585,7 @@ namespace bambu_bus
     }
 
     // Helper function from original code, make it a private member method
-    uint8_t BambuBus::get_filament_left_char(uint8_t ams_id)
+    uint8_t BambuBus::get_filament_left_char(uint8_t AMS_num)
     {
         uint8_t data = 0;
         for (int i = 0; i < 4; i++)

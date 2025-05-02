@@ -156,7 +156,6 @@ namespace bambu_bus
         uint8_t packge_send_buf[1000];
         int BambuBus_have_data = 0;
         uint16_t BambuBus_address = 0;
-        uint8_t AMS_num = 1;
         bool Bambubus_need_to_save = false;
         uint8_t package_num = 0;
         bool need_debug = true;
