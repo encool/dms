@@ -355,11 +355,11 @@ namespace bambu_bus
                 break;
 
             case BambuBus_package_filament_motion_long:
-                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)... but handler is not fully implemented.");
+                // ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)... but handler is not fully implemented.");
 
-                // ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
-                // this->send_for_Dxx(this->buf_X, data_length);
-                // time_motion_ = now + 1000; // 更新运动状态时间戳
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
+                this->send_for_Dxx(this->buf_X, data_length);
+                time_motion_ = now + 1000; // 更新运动状态时间戳
                 // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
                 break;
 
@@ -535,8 +535,8 @@ namespace bambu_bus
             {
                 memcpy(F00_res + i * sizeof(F01_res), F01_res, sizeof(F01_res));
                 F00_res[i * sizeof(F01_res) + 5] = 0;
-                // F00_res[i * sizeof(F01_res) + 6] = i;
-                // F00_res[i * sizeof(F01_res) + 7] = i;
+                F00_res[i * sizeof(F01_res) + 6] = i;
+                F00_res[i * sizeof(F01_res) + 7] = i;
             }
             package_send_with_crc(F00_res, sizeof(F00_res));
         }
