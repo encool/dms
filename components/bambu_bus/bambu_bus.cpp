@@ -465,16 +465,15 @@ namespace bambu_bus
 
         return stu;
     }
-
     package_type BambuBus::get_packge_type(uint8_t *buf, int length)
     {
-        if (!package_check_crc16(buf, length))
+        if (package_check_crc16(buf, length) == false)
         {
             return BambuBus_package_NONE;
         }
-
         if (buf[1] == 0xC5)
         {
+    
             switch (buf[4])
             {
             case 0x03:
@@ -497,39 +496,29 @@ namespace bambu_bus
         }
         else if (buf[1] == 0x05)
         {
-            // 解析长包头信息 (填充到成员变量 parsed_long_package 中)
-            // 注意：这里调用分析函数来填充 this->parsed_long_package
-            this->Bambubus_long_package_analysis(buf, length, &this->parsed_long_package);
-
-            // 更新设备地址 (如果需要，根据原始逻辑)
-            if (this->parsed_long_package.target_address == 0x0700 || this->parsed_long_package.target_address == 0x1200)
+            Bambubus_long_package_analysis(buf, length, &parsed_long_package);
+            if (parsed_long_package.target_address == 0x0700)
             {
-                if (this->BambuBus_address != this->parsed_long_package.target_address)
-                {
-                    ESP_LOGI(TAG, "更新 BambuBus 地址为 0x%04X (来自长包目标地址)", this->parsed_long_package.target_address);
-                    this->BambuBus_address = this->parsed_long_package.target_address;
-                }
+                BambuBus_address = parsed_long_package.target_address;
             }
-
-            // 根据解析出的长包类型 (type 字段) 返回正确的枚举值
-            switch (this->parsed_long_package.type)
+            else if (parsed_long_package.target_address == 0x1200)
             {
-            case 0x21A: // MC Online?
-                ESP_LOGI(TAG, "识别到长包类型: MC Online (0x21A)");
+                BambuBus_address = parsed_long_package.target_address;
+            }
+    
+            switch (parsed_long_package.type)
+            {
+            case 0x21A:
                 return BambuBus_long_package_MC_online;
-            case 0x211: // 请求耗材信息
-                ESP_LOGI(TAG, "识别到长包类型: 请求耗材信息 (0x211)");
-                return BambuBus_longe_package_filament; // <--- 返回这个，以便调用 send_for_long_packge_filament
-            case 0x103:                                 // 请求版本/名称?
-            case 0x402:                                 // 请求序列号?
-                ESP_LOGI(TAG, "识别到长包类型: 版本/序列号 (0x%X)", this->parsed_long_package.type);
+            case 0x211:
+                return BambuBus_longe_package_filament;
+            case 0x103:
+            case 0x402:
                 return BambuBus_long_package_version;
             default:
-                ESP_LOGI(TAG, "收到未知的长包类型: 0x%03X", this->parsed_long_package.type);
-                return BambuBus_package_ETC; // 其他未识别长包
+                return BambuBus_package_ETC;
             }
         }
-
         return BambuBus_package_NONE;
     }
 
@@ -585,25 +574,12 @@ namespace bambu_bus
 
     void BambuBus::Bambubus_long_package_send(long_packge_data *data)
     {
-        // Need a member buffer for sending, packge_send_buf[1000];
-        this->packge_send_buf[0] = 0x3D;
-        this->packge_send_buf[1] = 0x00; // Assuming long package identifier byte 1 is 0x00
-
-        // Original code sets package_length = data_length + 15 BEFORE memcpy.
-        // This seems correct: total length = payload + header(13) + crc16(2)
+        packge_send_buf[0] = 0x3D;
+        packge_send_buf[1] = 0x00;
         data->package_length = data->data_length + 15;
-
-        // Copy the first 11 bytes of the struct (header fields) into the send buffer
-        // Again, relies on struct layout matching the first 11 bytes.
-        memcpy(this->packge_send_buf + 2, data, 11);
-
-        // Copy the actual payload data
-        memcpy(this->packge_send_buf + 13, data->datas, data->data_length);
-
-        // Calculate CRCs and send using the existing method
-        ESP_LOGD(TAG, "Sending long package: type=0x%X, src=0x%X, tgt=0x%X, total_len=%d",
-                 data->type, data->source_address, data->target_address, data->package_length);
-        this->package_send_with_crc(this->packge_send_buf, data->package_length); // Send total length (header + payload + CRC16 space)
+        memcpy(packge_send_buf + 2, data, 11);
+        memcpy(packge_send_buf + 13, data->datas, data->data_length);
+        package_send_with_crc(packge_send_buf, data->data_length + 15);
     }
 
     // Helper function from original code, make it a private member method
@@ -1028,37 +1004,35 @@ namespace bambu_bus
     void BambuBus::send_for_long_packge_MC_online(uint8_t *buf, int length)
     {
         ESP_LOGD(TAG, "Processing Long Package MC Online request");
-
-        // Parse the incoming long package (header info is now in this->parsed_long_package)
-        // The actual parsing happened in get_packge_type before calling this handler.
-        // We need the source/target addresses and package number from the parsed data.
-
-        if (this->parsed_long_package.target_address != 0x0700 && this->parsed_long_package.target_address != 0x1200)
+        long_packge_data data;
+        uint8_t AMS_num = parsed_long_package.datas[0];
+        Bambubus_long_package_analysis(buf, length, &parsed_long_package);
+        if (parsed_long_package.target_address == 0x0700)
+        {
+        }
+        else if (parsed_long_package.target_address == 0x1200)
+        {
+        }
+        /*else if(printer_data_long.target_address==0x0F00)
+        {
+    
+        }*/
+        else
         {
             ESP_LOGW(TAG, "MC Online request for unknown target address 0x%04X. Ignoring.", this->parsed_long_package.target_address);
+
             return;
         }
-
-        uint8_t request_ams_num = this->parsed_long_package.datas[0]; // Get AMS num from payload
-
-        // Prepare the response data structure
-        long_packge_data response_data;
-        response_data.package_number = this->parsed_long_package.package_number; // Echo package number
-        response_data.type = this->parsed_long_package.type;                     // Echo type
-        response_data.source_address = this->parsed_long_package.target_address; // Swap source and target
-        response_data.target_address = this->parsed_long_package.source_address;
-
-        // Prepare payload
-        // uint8_t long_packge_MC_online[6] = {0x00, ...}; // This is a member template
-        uint8_t response_payload[sizeof(this->long_packge_MC_online)];
-        memcpy(response_payload, this->long_packge_MC_online, sizeof(response_payload)); // Copy template
-        response_payload[0] = request_ams_num;                                           // Set AMS num in payload
-
-        response_data.datas = response_payload; // Point to the payload buffer
-        response_data.data_length = sizeof(response_payload);
-
-        // Send the long package response
-        this->Bambubus_long_package_send(&response_data);
+    
+        data.datas = long_packge_MC_online;
+        data.datas[0] = AMS_num;
+        data.data_length = sizeof(long_packge_MC_online);
+    
+        data.package_number = parsed_long_package.package_number;
+        data.type = parsed_long_package.type;
+        data.source_address = parsed_long_package.target_address;
+        data.target_address = parsed_long_package.source_address;
+        Bambubus_long_package_send(&data);
     }
 
     void BambuBus::send_for_long_packge_filament(uint8_t *buf, int length)
