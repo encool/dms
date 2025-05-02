@@ -535,6 +535,7 @@ namespace bambu_bus
 
     void BambuBus::send_for_Fxx(uint8_t *buf, int length)
     {
+        ESP_LOGD(TAG, "Processing Fxx (Online Detect) request. buf[5]=0x%02X", buf[5]);
         uint8_t F00_res[4 * sizeof(F01_res)];
         if ((buf[5] == 0x00))
         {
