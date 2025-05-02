@@ -355,7 +355,9 @@ namespace bambu_bus
                 break;
 
             case BambuBus_package_filament_motion_long:
-                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)... but handler is not fully implemented.");
+
+                // ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
                 // this->send_for_Dxx(this->buf_X, data_length);
                 // time_motion_ = now + 1000; // 更新运动状态时间戳
                 // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
@@ -473,7 +475,7 @@ namespace bambu_bus
         }
         if (buf[1] == 0xC5)
         {
-    
+
             switch (buf[4])
             {
             case 0x03:
@@ -505,7 +507,7 @@ namespace bambu_bus
             {
                 BambuBus_address = parsed_long_package.target_address;
             }
-    
+
             switch (parsed_long_package.type)
             {
             case 0x21A:
@@ -596,7 +598,6 @@ namespace bambu_bus
                     data |= (0x2 << i) << i; // 2<<(2*i)
                 }
             }
-            
         }
         return data;
     }
@@ -1015,7 +1016,7 @@ namespace bambu_bus
         }
         /*else if(printer_data_long.target_address==0x0F00)
         {
-    
+
         }*/
         else
         {
@@ -1023,11 +1024,11 @@ namespace bambu_bus
 
             return;
         }
-    
+
         data.datas = long_packge_MC_online;
         data.datas[0] = AMS_num;
         data.data_length = sizeof(long_packge_MC_online);
-    
+
         data.package_number = parsed_long_package.package_number;
         data.type = parsed_long_package.type;
         data.source_address = parsed_long_package.target_address;
