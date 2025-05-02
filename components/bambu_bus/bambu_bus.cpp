@@ -612,17 +612,15 @@ namespace bambu_bus
         uint8_t data = 0;
         for (int i = 0; i < 4; i++)
         {
-            // Check if the filament slot exists and is online
-            if (this->data_save.filament[ams_id][i].statu == online)
+            if (data_save.filament[AMS_num][i].statu == online)
             {
-                // Bit pattern: 01 (online, idle), 11 (online, moving) per slot
-                data |= (0x1 << (i * 2)); // Set bit 2*i to 1 (indicates online)
-                if (this->data_save.filament[ams_id][i].motion_set != idle)
+                data |= (0x1 << i) << i; // 1<<(2*i)
+                if (data_save.filament[AMS_num][i].motion_set != idle)
                 {
-                    data |= (0x2 << (i * 2)); // Set bit 2*i + 1 to 1 (indicates moving)
+                    data |= (0x2 << i) << i; // 2<<(2*i)
                 }
             }
-            // Offline slots have 00 implicitly
+            
         }
         return data;
     }
