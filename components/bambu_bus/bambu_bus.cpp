@@ -355,8 +355,8 @@ namespace bambu_bus
                 break;
 
             case BambuBus_package_filament_motion_long:
-                // ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
-                // this->send_for_Dxx(this->buf_X, data_length);
+                ESP_LOGD(TAG, "Processing package (Type: BambuBus_package_filament_motion_long)...");
+                this->send_for_Dxx(this->buf_X, data_length);
                 // time_motion_ = now + 1000; // 更新运动状态时间戳
                 // ESP_LOGD(TAG, "Finished processing package (Type: BambuBus_package_filament_motion_long). Motion timeout extended.");
                 break;
@@ -630,40 +630,28 @@ namespace bambu_bus
     // Helper function from original code, make it a private member method
     void BambuBus::set_motion_res_datas(uint8_t *set_buf, uint8_t ams_id, uint8_t read_num)
     {
-        float meters = 0.0f;
-        uint8_t flagx = 0x02; // Meaning unclear, seems constant in original
+        // unsigned char statu_flags = buf[6];
 
-        if (read_num != 0xFF && read_num < 4)
-        { // Only calculate meters if a valid filament is selected
-            if (this->BambuBus_address == 0x700)
-            {                                                                // AMS08 (Hub)
-                meters = -this->data_save.filament[ams_id][read_num].meters; // Negative for hub? Check logic.
+        // unsigned char fliment_motion_flag = buf[8];
+        float meters = 0;
+        uint8_t flagx = 0x02;
+        if (read_num != 0xFF)
+        {
+            if (BambuBus_address == 0x700) // AMS08
+            {
+                meters = -data_save.filament[AMS_num][read_num].meters;
             }
-            else if (this->BambuBus_address == 0x1200)
-            { // AMS lite
-                meters = this->data_save.filament[ams_id][read_num].meters;
+            else if (BambuBus_address == 0x1200) // AMS lite
+            {
+                meters = data_save.filament[AMS_num][read_num].meters;
             }
-            // Else (address 0x00 or unknown), meters remain 0
         }
-        meters = 22.0f;
-
-        set_buf[0] = ams_id;                          // Corresponds to original Cxx_res[5]
-        set_buf[1] = 0x00;                            // Original Cxx_res[6], seems unused/padding? Set to 0 based on template.
-        set_buf[2] = flagx;                           // Original Cxx_res[7]
-        set_buf[3] = read_num;                        // Original Cxx_res[8], maybe using number
-        memcpy(set_buf + 4, &meters, sizeof(meters)); // Original Cxx_res[9..12]
-        // Original Cxx_res[13..23] seem to be fixed values from C_test macro? Let's keep them.
-        // Original code modifies Cxx_res[24] which corresponds to set_buf[19] relative to C_test start (offset 5)
-        // Cxx_res offset 5 + 19 = 24. Check Cxx_res template.
-        // C_test macro is 35 bytes. Cxx_res has 5 bytes header, then C_test, then 2 bytes CRC. Total 42?
-        // Let's re-evaluate Cxx_res size and offsets.
-        // Cxx_res = {hdr[5], C_test[35], crc[2]} = 42 bytes. Okay.
-        // C_test has 35 bytes. set_buf points to Cxx_res + 5.
-        // set_buf[0..3] = ams_id, 0x00, flagx, read_num
-        // set_buf[4..7] = meters
-        // Original set_buf[13] = 0. This corresponds to Cxx_res[5+13] = Cxx_res[18]. Keep template value.
-        // Original set_buf[24] = get_filament_left_char(). This corresponds to Cxx_res[5+24] = Cxx_res[29].
-        set_buf[19] = this->get_filament_left_char(ams_id); // Modify the correct byte in the buffer
+        set_buf[0] = AMS_num;
+        set_buf[2] = flagx;
+        set_buf[3] = read_num; // maybe using number
+        memcpy(set_buf + 4, &meters, sizeof(meters));
+        set_buf[13] = 0;
+        set_buf[24] = get_filament_left_char(AMS_num);
     }
 
     // Helper function from original code, make it a private member method
