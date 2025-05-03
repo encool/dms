@@ -102,8 +102,8 @@ namespace bambu_bus
             for (auto &j : i)
             {
                 // j.statu = NFC_waiting;
-                // j.statu = online;
-                j.statu = offline;
+                j.statu = online;
+                // j.statu = offline;
                 j.motion_set = idle;
                 // j.motion_set = need_send_out;
             }
