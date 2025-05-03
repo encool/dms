@@ -64,33 +64,58 @@ namespace bambu_bus
 
         if (!_init_ready)
         {
-            // Initialize default filament colors
             data_save.filament[0][0].color_R = 0xFF;
             data_save.filament[0][0].color_G = 0x00;
             data_save.filament[0][0].color_B = 0x00;
-
             data_save.filament[0][1].color_R = 0x00;
             data_save.filament[0][1].color_G = 0xFF;
             data_save.filament[0][1].color_B = 0x00;
-
             data_save.filament[0][2].color_R = 0x00;
             data_save.filament[0][2].color_G = 0x00;
             data_save.filament[0][2].color_B = 0xFF;
-
             data_save.filament[0][3].color_R = 0x88;
             data_save.filament[0][3].color_G = 0x88;
             data_save.filament[0][3].color_B = 0x88;
-
-            // Initialize other AMS slots
-            for (int i = 1; i < 4; i++)
-            {
-                for (int j = 0; j < 4; j++)
-                {
-                    data_save.filament[i][j].color_R = 0xFF >> (i + 1);
-                    data_save.filament[i][j].color_G = 0xFF >> (i + 1);
-                    data_save.filament[i][j].color_B = 0xFF >> (i + 1);
-                }
-            }
+    
+            data_save.filament[1][0].color_R = 0xC0;
+            data_save.filament[1][0].color_G = 0x20;
+            data_save.filament[1][0].color_B = 0x20;
+            data_save.filament[1][1].color_R = 0x20;
+            data_save.filament[1][1].color_G = 0xC0;
+            data_save.filament[1][1].color_B = 0x20;
+            data_save.filament[1][2].color_R = 0x20;
+            data_save.filament[1][2].color_G = 0x20;
+            data_save.filament[1][2].color_B = 0xC0;
+            data_save.filament[1][3].color_R = 0x60;
+            data_save.filament[1][3].color_G = 0x60;
+            data_save.filament[1][3].color_B = 0x60;
+    
+            data_save.filament[2][0].color_R = 0x80;
+            data_save.filament[2][0].color_G = 0x40;
+            data_save.filament[2][0].color_B = 0x40;
+            data_save.filament[2][1].color_R = 0x40;
+            data_save.filament[2][1].color_G = 0x80;
+            data_save.filament[2][1].color_B = 0x40;
+            data_save.filament[2][2].color_R = 0x40;
+            data_save.filament[2][2].color_G = 0x40;
+            data_save.filament[2][2].color_B = 0x80;
+            data_save.filament[2][3].color_R = 0x40;
+            data_save.filament[2][3].color_G = 0x40;
+            data_save.filament[2][3].color_B = 0x40;
+    
+            data_save.filament[3][0].color_R = 0x40;
+            data_save.filament[3][0].color_G = 0x20;
+            data_save.filament[3][0].color_B = 0x20;
+            data_save.filament[3][1].color_R = 0x20;
+            data_save.filament[3][1].color_G = 0x40;
+            data_save.filament[3][1].color_B = 0x20;
+            data_save.filament[3][2].color_R = 0x20;
+            data_save.filament[3][2].color_G = 0x20;
+            data_save.filament[3][2].color_B = 0x40;
+            data_save.filament[3][3].color_R = 0x20;
+            data_save.filament[3][3].color_G = 0x20;
+            data_save.filament[3][3].color_B = 0x20;
+            
         }
         else
         {
