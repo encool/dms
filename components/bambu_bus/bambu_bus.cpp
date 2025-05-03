@@ -625,6 +625,9 @@ namespace bambu_bus
         set_buf[2] = flagx;
         set_buf[3] = read_num; // maybe using number
         memcpy(set_buf + 4, &meters, sizeof(meters));
+        memcpy(set_buf + 8, &data_save.filament[AMS_num][read_num].pressure, sizeof(uint16_t));
+        // memcpy(set_buf + 10, &flag_unknow1, sizeof(uint16_t));
+        // memcpy(set_buf + 12, &data_save.filament[AMS_num][read_num].speed, sizeof(int16_t));
         set_buf[13] = 0;
         set_buf[24] = get_filament_left_char(AMS_num);
     }
