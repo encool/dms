@@ -274,10 +274,10 @@ namespace bambu_bus
         { // 或者使用更精细的日志级别控制
             ESP_LOGD(TAG, "  %s", esphome::format_hex_pretty(data, length).c_str());
         }
-        // this->write_array(data, length);
+        this->write_array(data, length);
 
-        // // 等待发送完成 - 非常重要!
-        // this->flush();
+        // 等待发送完成 - 非常重要!
+        this->flush();
         ESP_LOGV(TAG, "UART flush complete.");
 
         // 在 flush() 之后再禁用 DE
